@@ -8,4 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.1.0]
 
-- First release.
+- Add `format_indian` to render integers and decimals with Indian lakh and crore
+  grouping, with a configurable separator and support for negatives.
+- Add `parse_indian` to read a grouped value back to an `int` or `Decimal`,
+  rejecting Western grouping and malformed input.
