@@ -102,7 +102,7 @@ def test_rejects_western_grouping() -> None:
 
 
 def test_rejects_malformed_input() -> None:
-    bad = ["", "-", "+", "abc", "12,,34", "12.34.56", "1,2,3", "12,345.", ".5", "+-5", "1,23"]
+    bad = ["", "-", "+", "abc", "12,,34", "12.34.56", "1,2,3", "12,345.", ".5", "+-5", "1,23", "123,45,678"]
     for text in bad:
         with pytest.raises(ValueError):
             parse_indian(text)

@@ -137,9 +137,8 @@ English.
 The 650 locales ICU ships, the four grouping strategies and a set of integers and decimals
 are checked against `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48) with Latin digits.
 They agree everywhere except Swiss French, where the ICU data writes an apostrophe while
-CLDR 48 gives
-`fr-CH` no group symbol of its own, so it inherits the narrow no-break space of `fr`. This
-library follows CLDR. Other differences are by design:
+CLDR 48 gives `fr-CH` no group symbol of its own, so it inherits the narrow no-break space
+of `fr`. This library follows CLDR. Other differences are by design:
 
 - Digits are always Latin (`0` to `9`); the native digits some locales default to, such as
   Arabic-Indic, are out of scope.
