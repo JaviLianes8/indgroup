@@ -3,10 +3,10 @@
 Progress:
 - [x] Brainstorm ranked improvements (this file)
 - [x] Pin the ground truth: CLDR 48 number symbols and patterns, ICU 78.3 grouping rule, UTS #35 numbers
-- [ ] Locale table derived from CLDR, with the Unicode licence shipped
-- [ ] `format_number`, `parse_number`, `number_symbols`, locale resolution, grouping strategies
-- [ ] `format_indian` and `parse_indian` fixes: float input without drift, ASCII digits only, separator checks
-- [ ] Command line
+- [x] Locale table derived from CLDR, with the Unicode licence shipped
+- [x] `format_number`, `parse_number`, `number_symbols`, locale resolution, grouping strategies
+- [x] `format_indian` and `parse_indian` fixes: float input without drift, ASCII digits only, separator checks
+- [x] Command line
 - [ ] Contracts: CLDR table, Intl.NumberFormat output, README examples, installed wheel
 - [ ] Docs and packaging: README, CHANGELOG, metadata, sdist contents
 - [ ] Gates: ruff format, ruff check, mypy --strict, pytest

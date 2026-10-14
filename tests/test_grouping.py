@@ -33,31 +33,39 @@ def test_formats_negative_numbers() -> None:
     assert format_indian(Decimal("-1234.5")) == "-1,234.5"
 
 
+def test_formats_a_float_through_its_shortest_spelling() -> None:
+    assert format_indian(0.1) == "0.1"
+    assert format_indian(1234567.25) == "12,34,567.25"
+    assert format_indian(-1e16) == "-10,00,00,00,00,00,00,000"
+    assert format_indian(1e-7) == "0.0000001"
+
+
 def test_accepts_a_custom_separator() -> None:
     assert format_indian(1234567, separator=" ") == "12 34 567"
+    assert format_indian(1234567, separator="\u00a0") == "12\u00a034\u00a0567"
 
 
 def test_rejects_a_bad_separator() -> None:
-    with pytest.raises(ValueError):
-        format_indian(1234567, separator="")
-    with pytest.raises(ValueError):
-        format_indian(1234567, separator=".")
-    with pytest.raises(ValueError):
-        format_indian(1234567, separator="5")
+    for bad in ["", ".", "5", "\u0663", "-", "+", ",,"]:
+        with pytest.raises(ValueError):
+            format_indian(1234567, separator=bad)
+        with pytest.raises(ValueError):
+            parse_indian("1", separator=bad)
+    with pytest.raises(TypeError):
+        format_indian(1, separator=None)  # type: ignore[arg-type]
 
 
-def test_rejects_bool_and_float() -> None:
+def test_rejects_bool_and_other_types() -> None:
     with pytest.raises(TypeError):
         format_indian(True)
     with pytest.raises(TypeError):
-        format_indian(1.5)  # type: ignore[arg-type]
+        format_indian("12")  # type: ignore[arg-type]
 
 
-def test_rejects_non_finite_decimals() -> None:
-    with pytest.raises(ValueError):
-        format_indian(Decimal("NaN"))
-    with pytest.raises(ValueError):
-        format_indian(Decimal("Infinity"))
+def test_rejects_non_finite_values() -> None:
+    for bad in [Decimal("NaN"), Decimal("sNaN"), Decimal("Infinity"), float("inf"), float("nan")]:
+        with pytest.raises(ValueError):
+            format_indian(bad)
 
 
 def test_parses_a_grouped_integer_to_int() -> None:
@@ -76,9 +84,10 @@ def test_parses_ungrouped_digits() -> None:
     assert parse_indian("1234567") == 1234567
 
 
-def test_parses_negative_values() -> None:
+def test_parses_signs_and_surrounding_space() -> None:
     assert parse_indian("-12,34,567") == -1234567
     assert parse_indian("-1,234.5") == Decimal("-1234.5")
+    assert parse_indian(" +1,234 ") == 1234
 
 
 def test_parses_with_a_custom_separator() -> None:
@@ -91,17 +100,30 @@ def test_rejects_western_grouping() -> None:
 
 
 def test_rejects_malformed_input() -> None:
-    for bad in ["", "abc", "12,,34", "12.34.56", "1,2,3", "12,345."]:
+    bad = ["", "-", "+", "abc", "12,,34", "12.34.56", "1,2,3", "12,345.", ".5", "+-5", "1,23"]
+    for text in bad:
         with pytest.raises(ValueError):
-            parse_indian(bad)
+            parse_indian(text)
 
 
-@pytest.mark.parametrize("value", [0, 5, 999, 1234, 1234567, 12596475, 100000000])
+def test_rejects_digits_outside_ascii() -> None:
+    for text in ["\u0661\u0662,\u0663\u0664\u0665", "12,345.\u0665", "\uff11"]:
+        with pytest.raises(ValueError):
+            parse_indian(text)
+
+
+def test_rejects_a_non_string() -> None:
+    with pytest.raises(TypeError):
+        parse_indian(1234)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [0, 5, 999, 1234, 1234567, 12596475, 100000000, -98765])
 def test_round_trips_integers(value: int) -> None:
     assert parse_indian(format_indian(value)) == value
 
 
-@pytest.mark.parametrize("text", ["0.00", "1234.50", "-9876543.21", "1234567.1"])
+@pytest.mark.parametrize("text", ["0.00", "1234.50", "-9876543.21", "1234567.1", "-0.0"])
 def test_round_trips_decimals(text: str) -> None:
     value = Decimal(text)
-    assert parse_indian(format_indian(value)) == value
+    back = parse_indian(format_indian(value))
+    assert str(back) == str(value)
