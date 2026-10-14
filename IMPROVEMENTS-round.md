@@ -24,8 +24,8 @@ Indian lakh and crore grouping only. Probed:
   expressed. The separator argument swaps the group character but the decimal point is
   always `.`.
 - No minimum grouping digits: CLDR says Spanish, Italian, Polish and European Portuguese leave
-  four-digit numbers ungrouped (`1234` but `12.345`), and Ewe needs five digits before it
-  groups.
+  four-digit numbers ungrouped (`1234` but `12.345`), and Ewe groups only from six digits
+  (`12345` but `123,456`).
 - `float` is rejected, so a caller converts it first and may introduce binary drift
   (`Decimal(0.1)`); the shortest round-trip spelling (`repr`) is what Intl shows.
 - The parser uses `\d`, which matches every Unicode decimal digit, so `parse_indian("١٢,٣٤٥")`
