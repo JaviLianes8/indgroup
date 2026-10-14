@@ -8,7 +8,7 @@ Progress:
 - [x] `format_indian` and `parse_indian` fixes: float input without drift, ASCII digits only, separator checks
 - [x] Command line
 - [ ] Contracts: CLDR table, Intl.NumberFormat output, README examples, installed wheel
-- [ ] Docs and packaging: README, CHANGELOG, metadata, sdist contents
+- [x] Docs and packaging: README, CHANGELOG, metadata, sdist contents
 - [ ] Gates: ruff format, ruff check, mypy --strict, pytest
 - [ ] Mutation run: removing guarded logic makes the suite fail
 - [ ] Independent review findings fixed with regression tests
