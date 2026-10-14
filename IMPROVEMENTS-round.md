@@ -7,10 +7,10 @@ Progress:
 - [x] `format_number`, `parse_number`, `number_symbols`, locale resolution, grouping strategies
 - [x] `format_indian` and `parse_indian` fixes: float input without drift, ASCII digits only, separator checks
 - [x] Command line
-- [ ] Contracts: CLDR table, Intl.NumberFormat output, README examples, installed wheel
+- [x] Contracts: CLDR table, Intl.NumberFormat output, README examples, installed wheel
 - [x] Docs and packaging: README, CHANGELOG, metadata, sdist contents
-- [ ] Gates: ruff format, ruff check, mypy --strict, pytest
-- [ ] Mutation run: removing guarded logic makes the suite fail
+- [x] Gates: ruff format, ruff check, mypy --strict, pytest
+- [x] Mutation run: removing guarded logic makes the suite fail
 - [x] Independent review findings fixed with regression tests
 - [ ] Pull request opened, guard clean
 
@@ -80,3 +80,36 @@ Indian lakh and crore grouping only. Probed:
   symbols, which is what `Intl.NumberFormat` gives with `-u-nu-latn`.
 - Rounding, significant digits, compact, percent and currency patterns.
 - Lenient parsing (any space as a group, ASCII minus for a Unicode minus).
+
+## Mutation run
+
+64 hand-written mutants over every module and the table derivation script (grouping sizes,
+the minimum grouping test, the slicing of groups, the strict grouped-integer pattern, sign,
+trimming, fraction and big-integer parsing, float and Decimal reading, the digit bound, each
+grouping strategy, the locale symbols, the separator checks of `format_indian`, locale
+parsing, aliases, parent and likely-script fallback, every command line branch, and the
+derivation of sizes, minimum grouping and minus sign). Run on a granted turn with the
+reference files fetched, writing no bytecode, purging `__pycache__` before each mutant,
+with a per-mutant timeout and a green suite before and after: 61 killed. The three
+survivors were fixed and rerun with the installed wheel test switched on, all killed: a
+leading group longer than the secondary size (`123,45,678` in Indian grouping) now has a
+test; the console encoding mutant is caught by the installed wheel test; the separator type
+check, otherwise masked by the `TypeError` of `len(None)`, now has its message pinned.
+
+## Independent review
+
+Fixed, each with a regression test in `tests/test_review_fixes.py` or the module tests:
+
+- Grouping copied the remaining digits on every pass, so long numbers took quadratic time;
+  it now slices once per group, and values over a million integer digits are refused.
+- Numbers past the 4300-digit limit of `int` string conversion failed to format or parse;
+  both directions now go through `Decimal`.
+- Parsing trimmed with `str.strip()`, which also removes no-break spaces, so a stray group
+  symbol at either end was accepted; only ASCII spaces, tabs and line breaks are trimmed.
+- A `Decimal` subclass could change the digits through `__format__`; the base methods are
+  called directly.
+- Whole floats printed `5.0`; they print `5`, as `Intl.NumberFormat` does.
+- `-0` reads back as `0`: documented, since a value without a fraction is an `int`.
+- Docs: the command line note on negative values, the count of locales compared with Intl,
+  the separator rule in this file; packaging requires `hatchling>=1.27` for the licence
+  expression; two test modules gained the future import.

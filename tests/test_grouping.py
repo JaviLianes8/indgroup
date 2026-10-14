@@ -53,7 +53,7 @@ def test_rejects_a_bad_separator() -> None:
             format_indian(1234567, separator=bad)
         with pytest.raises(ValueError):
             parse_indian("1", separator=bad)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="separator must be a str"):
         format_indian(1, separator=None)  # type: ignore[arg-type]
 
 
