@@ -116,3 +116,18 @@ def test_number_symbols_describe_the_locale() -> None:
     assert number_symbols("tok").primary == 2
     with pytest.raises(AttributeError):
         number_symbols("en").group = " "  # type: ignore[misc]
+
+
+def test_subclasses_cannot_change_the_digits() -> None:
+    class Shown(int):
+        def __repr__(self) -> str:
+            return "shown"
+
+        __str__ = __repr__
+
+    class Drifting(float):
+        def __repr__(self) -> str:
+            return "0.30000000000000004"
+
+    assert format_number(Shown(1234), "en") == "1,234"
+    assert format_number(Drifting(0.3), "en") == "0.3"

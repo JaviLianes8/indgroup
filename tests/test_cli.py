@@ -35,6 +35,7 @@ def test_locale_and_grouping_options() -> None:
 def test_parse_prints_plain_values() -> None:
     assert run("--parse", "12,34,567", "1,234.50") == (0, "1234567\n1234.50\n")
     assert run("-p", "-l", "de", "--", "-1.234,5") == (0, "-1234.5\n")
+    assert run("-p", "0.0000001", "1,00,000.00") == (0, "0.0000001\n100000.00\n")
 
 
 def test_values_from_stdin_skip_blank_lines_and_a_bom() -> None:
