@@ -25,7 +25,7 @@ def _parser() -> argparse.ArgumentParser:
         prog="indgroup",
         description="Group the digits of numbers the way a locale writes them (Unicode CLDR).",
         epilog="Without VALUE arguments the values are read from stdin, one per non-blank line."
-        " Put -- before a grouped negative value such as -1.234,5.",
+        " Put -- before negative values other than plain digits, such as -1e5 or -1.234,5.",
     )
     parser.add_argument("values", nargs="*", metavar="VALUE", help="the numbers, in order")
     parser.add_argument("-l", "--locale", default="en-IN", help="BCP 47 locale (default: en-IN)")

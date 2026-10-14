@@ -8,6 +8,8 @@ from functools import lru_cache
 
 from ._value import DIGITS
 
+_SPACE = " \t\r\n"
+
 
 def group_digits(digits: str, separator: str, primary: int, secondary: int, minimum: int) -> str:
     """Insert ``separator`` into a run of digits the way ICU's grouper does.
@@ -18,12 +20,11 @@ def group_digits(digits: str, separator: str, primary: int, secondary: int, mini
     """
     if primary <= 0 or len(digits) - primary < minimum:
         return digits
-    groups = [digits[-primary:]]
-    rest = digits[:-primary]
-    while rest:
-        groups.append(rest[-secondary:])
-        rest = rest[:-secondary]
-    return separator.join(reversed(groups))
+    head = digits[:-primary]
+    first = len(head) % secondary or secondary
+    groups = [head[:first]]
+    groups += [head[start : start + secondary] for start in range(first, len(head), secondary)]
+    return separator.join([*groups, digits[-primary:]])
 
 
 @lru_cache(maxsize=64)
@@ -53,7 +54,7 @@ def read_number(
     """
     if not isinstance(text, str):
         raise TypeError(f"text must be a str, not {type(text).__name__}")
-    raw = text.strip()
+    raw = text.strip(_SPACE)  # not str.strip(): U+00A0 and U+202F are group symbols
     negative = raw.startswith(minus)
     if negative:
         raw = raw[len(minus) :]
@@ -64,6 +65,6 @@ def read_number(
     if point and not DIGITS.fullmatch(fraction):
         raise ValueError(f"not a valid fractional part: {fraction!r}")
     if not point:
-        number = int(digits)
+        number = int(Decimal(digits))  # int(str) stops at 4300 digits
         return -number if negative else number
     return Decimal(f"{'-' if negative else ''}{digits}.{fraction}")

@@ -26,7 +26,12 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - `format_indian` accepts `float`, read through its shortest round-trip spelling so no
-  binary drift shows (`0.1` prints `0.1`). Before, a float raised `TypeError`.
+  binary drift shows (`0.1` prints `0.1`, `5.0` prints `5`). Before, a float raised
+  `TypeError`.
+- Values with more than a million integer digits raise `ValueError`; below that, any length
+  works, past the 4300-digit limit of `int` string conversion.
+- Parsing strips only ASCII spaces, tabs and line breaks around the text, never a group
+  symbol such as a no-break space.
 - `parse_indian` accepts ASCII digits only. Before, any Unicode decimal digit passed, so
   `parse_indian` read Arabic-Indic digits the formatter never writes.
 - The separator may not be `+` or `-`, which made signed output ambiguous, and must be a

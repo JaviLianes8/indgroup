@@ -64,11 +64,15 @@ print(ascii(format_number(-5, "sv")))
 
 Nothing is rounded: a `Decimal` keeps every digit it has, trailing zeros included, and a
 `float` is read through its shortest round-trip spelling, so `0.1` prints `0.1` and not the
-binary value it stands for.
+binary value it stands for, and a whole float such as `5.0` prints `5`, as in Intl. Values
+with more than a million integer digits are refused with `ValueError`.
 
 Parsing is strict. It takes the locale's own minus, decimal and group symbols, ASCII digits
 only, and groups exactly where the locale writes them, or none at all. A value without a
-fraction comes back as `int`, one with a fraction as a `Decimal` with every digit kept.
+fraction comes back as `int`, one with a fraction as a `Decimal` with every digit kept, so
+formatting the result gives the same text again; the one exception is `-0`, which reads back
+as the `int` `0`. Surrounding spaces, tabs and line breaks are ignored, but a group symbol is
+never taken for one, even when it is a no-break space.
 
 ```python
 from indgroup import number_symbols, parse_number, resolve_locale
@@ -104,7 +108,8 @@ $ indgroup --parse 12,34,567.50
 
 Values come from the arguments or from stdin, one per line. `-l/--locale` picks the locale
 (default `en-IN`), `-g/--grouping` the strategy, `-p/--parse` reads grouped values back,
-`--locales` lists the locales. Put `--` before a grouped negative value such as `-1.234,5`.
+`--locales` lists the locales. Put `--` before a negative value other than plain digits,
+such as `-1e5` or `-1.234,5`.
 Errors exit with status 2.
 
 ## API
@@ -129,9 +134,10 @@ English.
 
 ## How it compares with `Intl.NumberFormat`
 
-Every locale, the four grouping strategies and a set of integers and decimals are checked
-against `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48) with Latin digits. They agree
-everywhere except Swiss French, where the ICU data writes an apostrophe while CLDR 48 gives
+The 650 locales ICU ships, the four grouping strategies and a set of integers and decimals
+are checked against `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48) with Latin digits.
+They agree everywhere except Swiss French, where the ICU data writes an apostrophe while
+CLDR 48 gives
 `fr-CH` no group symbol of its own, so it inherits the narrow no-break space of `fr`. This
 library follows CLDR. Other differences are by design:
 

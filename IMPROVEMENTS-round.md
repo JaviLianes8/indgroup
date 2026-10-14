@@ -11,7 +11,7 @@ Progress:
 - [x] Docs and packaging: README, CHANGELOG, metadata, sdist contents
 - [ ] Gates: ruff format, ruff check, mypy --strict, pytest
 - [ ] Mutation run: removing guarded logic makes the suite fail
-- [ ] Independent review findings fixed with regression tests
+- [x] Independent review findings fixed with regression tests
 - [ ] Pull request opened, guard clean
 
 ## Starting point
@@ -61,7 +61,7 @@ Indian lakh and crore grouping only. Probed:
 6. **`number_symbols(locale)`** returns a frozen `NumberSymbols` value so callers can see and
    reuse what the formatter uses.
 7. **`format_indian` and `parse_indian` kept and fixed**: same output, float accepted without
-   drift, ASCII digits only, signs and whitespace refused as separators.
+   drift, ASCII digits only, signs refused as separators.
 8. **Typed API.** `Grouping` literal alias, `mypy --strict` clean, run-time checks with clear
    messages for the wrong types and unknown values.
 9. **Command line.** `indgroup 1234567.89 -l de`, `indgroup --parse "12,34,567"`, values from
