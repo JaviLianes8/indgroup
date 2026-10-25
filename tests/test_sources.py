@@ -10,6 +10,7 @@ import io
 import json
 import re
 import tarfile
+from importlib.resources import files
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -48,7 +49,8 @@ def test_the_shipped_table_is_a_fresh_derivation_from_cldr() -> None:
     read_upstream("cldr-core-48.0.0.tgz")
     read_upstream("cldr-numbers-full-48.0.0.tgz")
     script = _build_script()
-    shipped = (ROOT / "src" / "indgroup" / "_cldr.json").read_text(encoding="ascii")
+    # The table of the package under test: the source tree, or an installed wheel.
+    shipped = files("indgroup").joinpath("_cldr.json").read_text(encoding="ascii")
     assert script.render(script.derive()) == shipped
 
 
