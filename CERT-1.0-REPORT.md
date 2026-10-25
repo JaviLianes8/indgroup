@@ -7,7 +7,7 @@ against 0.2.0, the last tagged state of `main`.
 
 Progress:
 - [x] Branch `release/1.0.0` created from `main` (e5cecf8, version 0.2.0)
-- [ ] Baseline gates on 0.2.0
+- [ ] Baseline gates on 0.2.0 (ruff and mypy done; full pytest pending a machine turn)
 - [ ] API review and 1.0.0 changes (item 1)
 - [ ] Errors, typing, docstrings and doctests (items 2 to 5)
 - [ ] Ground truth: CLDR, ICU and UTS #35 re-fetched, Intl.NumberFormat re-run (item 7)
@@ -28,3 +28,10 @@ Progress:
   `ValueError` of 100,033 characters, `resolve_locale("a" * 100000)` one of 100,020.
 - `indgroup --parse` with an integer of more than 4300 digits exits 2 with the
   `int` string conversion limit message, although `parse_number` reads it.
+- `mypy --strict src tests` failed on two test annotations (`ruff format --check .`,
+  `ruff check .` and `mypy --strict src` exited 0); fixed in the tests.
+
+## Time window
+
+Work on this repository runs in the owner's windows: on 2026-10-25 until about 14:00, then
+from 22:00. The run paused at 14:00 after the checkpoint above.
