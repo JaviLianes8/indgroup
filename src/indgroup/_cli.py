@@ -11,6 +11,7 @@ from typing import TextIO, cast
 
 from ._locale import cldr_version, supported_locales
 from ._number import Grouping, format_number, parse_number
+from ._value import shown
 
 __all__ = ["main"]
 
@@ -68,9 +69,9 @@ def _read_values(stdin: TextIO) -> list[str]:
 def _convert(value: str, args: argparse.Namespace) -> str:
     if args.parse:
         number = parse_number(value, args.locale)
-        return str(number) if isinstance(number, int) else format(number, "f")
+        return format(Decimal(number), "f")  # str(int) stops at 4300 digits
     if not _PLAIN.fullmatch(value):
-        raise ValueError(f"not a plain number: {value!r}")
+        raise ValueError(f"not a plain number: {shown(value)}")
     return format_number(Decimal(value), args.locale, grouping=cast(Grouping, args.grouping))
 
 

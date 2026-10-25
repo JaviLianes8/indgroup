@@ -60,9 +60,12 @@ def test_keeps_every_fraction_digit_without_rounding() -> None:
 
 
 def test_rejects_unknown_grouping_and_bad_values() -> None:
-    for grouping in ["yes", "", True]:
-        with pytest.raises(ValueError):
+    for grouping in ["yes", "", "Auto", "auto "]:
+        with pytest.raises(ValueError, match="grouping must be one of auto, min2, always, off"):
             format_number(1, "en", grouping=grouping)  # type: ignore[arg-type]
+    for wrong in [True, None, 0]:
+        with pytest.raises(TypeError, match="grouping must be a str"):
+            format_number(1, "en", grouping=wrong)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
         format_number(False, "en")
     with pytest.raises(ValueError):
