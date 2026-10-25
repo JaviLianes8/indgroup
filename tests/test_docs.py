@@ -18,19 +18,24 @@ ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 
-def test_every_python_example_prints_its_comments() -> None:
-    blocks = re.findall(r"```python\n(.*?)```", README, flags=re.DOTALL)
-    assert len(blocks) == 3
+def _run_examples(name: str) -> tuple[int, int]:
+    text = (ROOT / name).read_text(encoding="utf-8")
+    blocks = re.findall(r"```python\n(.*?)```", text, flags=re.DOTALL)
     checked = 0
     for block in blocks:
         expected = [line[2:] for line in block.splitlines() if line.startswith("# ")]
         assert expected, block
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            exec(compile(block, "README.md", "exec"), {"__name__": "readme"})
+            exec(compile(block, name, "exec"), {"__name__": "docs"})
         assert out.getvalue().splitlines() == expected
         checked += len(expected)
-    assert checked == 21
+    return len(blocks), checked
+
+
+def test_every_python_example_prints_its_comments() -> None:
+    assert _run_examples("README.md") == (3, 21)
+    assert _run_examples("GUIDE.md") == (4, 27)
 
 
 def test_every_shell_example_prints_its_output() -> None:
@@ -92,3 +97,11 @@ def test_source_files_stay_under_two_hundred_lines() -> None:
     for path in _tracked_text_files():
         if path.suffix in {".py", ".mjs", ".ps1"}:
             assert len(path.read_text(encoding="utf-8").splitlines()) <= 200, path
+
+
+def test_readme_links_are_absolute_and_the_guide_names_every_public_name() -> None:
+    targets = re.findall(r"\]\(([^)]*)\)", README)
+    assert targets and all(target.startswith("https://") for target in targets), targets
+    guide = (ROOT / "GUIDE.md").read_text(encoding="utf-8")
+    for name in indgroup.__all__:
+        assert f"`{name}" in guide, name

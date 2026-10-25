@@ -1,5 +1,7 @@
 # indgroup
 
+[![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)](https://lianes8studio.com/certified)
+
 Format and strictly parse numbers with Indian lakh and crore grouping (`12,34,567`) and the
 digit grouping of every Unicode CLDR locale: `1.234.567,89` in German, `1'234'567.89` in
 Swiss German, a narrow no-break space in French, `1234` but `12.345` in Spanish. Exact for
@@ -65,7 +67,8 @@ print(ascii(format_number(-5, "sv")))
 Nothing is rounded: a `Decimal` keeps every digit it has, trailing zeros included, and a
 `float` is read through its shortest round-trip spelling, so `0.1` prints `0.1` and not the
 binary value it stands for, and a whole float such as `5.0` prints `5`, as in Intl. Values
-with more than a million integer digits are refused with `ValueError`.
+with more than 100,000 digits before or after the point are refused with `ValueError`
+(converting between `int` and `Decimal` takes quadratic time, so longer values would hang).
 
 Parsing is strict. It takes the locale's own minus, decimal and group symbols, ASCII digits
 only, and groups exactly where the locale writes them, or none at all. A value without a
@@ -128,9 +131,13 @@ Errors exit with status 2.
 | `Number` | `int \| float \| Decimal` |
 | `Grouping` | `Literal["auto", "min2", "always", "off"]` |
 
-Wrong types raise `TypeError`; NaN, infinities, unknown grouping values and malformed text
-raise `ValueError`; an unknown language raises `LookupError` instead of silently reading
-English.
+Wrong types raise `TypeError`; NaN, infinities, unknown grouping values, malformed text and
+values past the digit bound raise `ValueError`; an unknown language raises `LookupError`
+instead of silently reading English. Error messages quote at most 40 characters of the
+input. The [GUIDE](https://github.com/JaviLianes8/indgroup/blob/main/GUIDE.md) covers every
+rule in detail and the
+[CHANGELOG](https://github.com/JaviLianes8/indgroup/blob/main/CHANGELOG.md) what changed in
+each release.
 
 ## How it compares with `Intl.NumberFormat`
 
@@ -147,11 +154,15 @@ of `fr`. This library follows CLDR. Other differences are by design:
 
 ## Why
 
-Python's `locale` module depends on what the operating system has installed, the `en_IN`
-locale is absent on most systems, and `format(n, ",")` knows only groups of three. Babel
-covers CLDR but is a large dependency that rounds to the pattern's fraction digits, and
-the small packages that mention lakh and crore convert numbers to words or are tied to template
-filters. This is a plain formatter and a strict parser with exact `Decimal` support.
+`format(n, ",")` knows only groups of three. Python's `locale` module formats with the
+locale data of the operating system and switches it with `setlocale`, a setting shared by
+the whole process. Babel is the complete CLDR toolkit (dates, currencies, plural rules)
+and has a strict parser too, but it is a 10 MB wheel, and its `format_decimal` rounds to
+the pattern's three fraction digits unless `decimal_quantization=False` is passed; Babel
+2.18.0 (CLDR 47) also groups Spanish `1234` as `1.234`, where CLDR's minimum grouping
+digits say `1234`. When only the digits matter, `indgroup` is a small, typed,
+zero-dependency formatter and strict parser that never rounds and is checked against
+`Intl.NumberFormat`.
 
 ## Development
 
@@ -163,12 +174,14 @@ pwsh scripts/check.ps1
 
 The table in `src/indgroup/_cldr.json` is derived by `scripts/build_table.py` from the CLDR
 JSON packages. The reference files are not part of the repository; their tests skip while
-they are absent. `INDGROUP_E2E=1` adds a test that builds, installs and drives the wheel.
+they are absent, and the live `Intl.NumberFormat` comparison needs Node 24.18 (ICU 78.3).
+`INDGROUP_E2E=1` adds a test that builds, installs and drives the wheel.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The number data is derived from the Unicode CLDR and ships
-under the Unicode License v3, see [LICENSE-UNICODE](LICENSE-UNICODE).
+MIT, see [LICENSE](https://github.com/JaviLianes8/indgroup/blob/main/LICENSE). The number
+data is derived from the Unicode CLDR and ships under the Unicode License v3, see
+[LICENSE-UNICODE](https://github.com/JaviLianes8/indgroup/blob/main/LICENSE-UNICODE).
 
 ## Links
 

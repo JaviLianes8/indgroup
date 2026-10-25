@@ -58,7 +58,32 @@ except LookupError:
     pass
 else:
     raise AssertionError("expected LookupError")
+for call, kind in [
+    (lambda: format_number(10**100_000, "en"), ValueError),
+    (lambda: parse_number("1" * 100_001, "en"), ValueError),
+    (lambda: format_number(1, "en", grouping=True), TypeError),
+]:
+    try:
+        call()
+    except kind as error:
+        assert len(str(error)) < 120
+    else:
+        raise AssertionError(kind)
+import pickle
+assert pickle.loads(pickle.dumps(number_symbols("hi"))) == number_symbols("hi")
+assert NumberSymbols.__module__ == "indgroup"
 print("e2e ok")
+"""
+
+CONSUMER = """
+from decimal import Decimal
+from indgroup import Grouping, Number, format_number, parse_number
+
+def show(value: Number, grouping: Grouping = "auto") -> str:
+    return format_number(value, "en-IN", grouping=grouping)
+
+back: int | Decimal = parse_number(show(Decimal("1234567.5")), "en-IN")
+print(show(1), back)
 """
 
 
@@ -105,6 +130,12 @@ def test_installed_wheel_end_to_end(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert result.stdout.decode().strip() == "e2e ok"
 
+    consumer = work / "consumer.py"
+    consumer.write_text(CONSUMER, encoding="utf-8")
+    typed = _run(sys.executable, "-m", "mypy", "--strict", "--python-executable", python, consumer)
+    assert typed.returncode == 0, typed.stdout
+    assert _run(python, "-I", consumer).stdout.decode().split() == ["1", "1234567.5"]
+
     script = bindir / ("indgroup.exe" if sys.platform == "win32" else "indgroup")
     commands: list[list[str | Path]] = [[python, "-m", "indgroup"]]
     if os.environ.get("INDGROUP_E2E_NO_SCRIPT") != "1":
@@ -116,3 +147,6 @@ def test_installed_wheel_end_to_end(tmp_path: Path) -> None:
         assert shown.stdout.decode("utf-8").replace("\r\n", "\n") == expected
         failed = _run(*command, "1", "-l", "xx", cwd=work)
         assert failed.returncode == 2 and b"no number data" in failed.stderr
+        digits = "9" * 5000
+        parsed = _run(*command, "-p", cwd=work, stdin=digits.encode() + b"\n")
+        assert parsed.returncode == 0 and parsed.stdout.decode().strip() == digits

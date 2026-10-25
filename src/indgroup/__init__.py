@@ -29,7 +29,7 @@ from ._number import Grouping, format_number, parse_number
 from ._symbols import NumberSymbols, number_symbols
 from ._value import Number
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "Grouping",

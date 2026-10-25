@@ -4,7 +4,7 @@ import io
 
 import pytest
 
-from indgroup import __version__, supported_locales
+from indgroup import __version__, format_indian, supported_locales
 from indgroup._cli import main
 
 
@@ -83,3 +83,12 @@ def test_invalid_utf8_on_stdin_is_reported(capsys: pytest.CaptureFixture[str]) -
         main([], stdin=raw, stdout=io.StringIO())
     assert raised.value.code == 2
     assert "not valid UTF-8" in capsys.readouterr().err
+
+
+def test_parse_prints_integers_past_the_int_string_limit() -> None:
+    digits = "9" * 5000
+    grouped = format_indian(10**5000 - 1)
+    assert grouped.replace(",", "") == digits
+    assert run("-p", grouped) == (0, digits + "\n")
+    assert run("-p", "-l", "de", digits) == (0, digits + "\n")
+    assert run(digits, "-g", "off") == (0, digits + "\n")
