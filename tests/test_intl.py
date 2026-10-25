@@ -12,24 +12,12 @@ from decimal import Decimal
 from typing import Any, cast
 
 import pytest
-from conftest import upstream_json
+from conftest import KNOWN_ICU_DIFFERENCES, intl_comparable, upstream_json
 
-from indgroup import Grouping, format_number, parse_number, resolve_locale
+from indgroup import Grouping, format_number, parse_number
 
-# ICU's own data writes an apostrophe for Swiss French; the CLDR 48 JSON has no group of
-# its own for fr-CH and inherits the narrow no-break space of fr. CLDR wins here.
-_KNOWN = {"fr-CH": ("'", "\u202f")}
-
-
-def _comparable(tag: str, resolved: str | None) -> bool:
-    if resolved is None:
-        return False
-    plain = tag.lower().split("-u-")[0]
-    try:
-        ours = resolve_locale(tag).lower()
-    except LookupError:
-        return False
-    return resolved.lower() in (plain, ours)
+_KNOWN = KNOWN_ICU_DIFFERENCES
+_comparable = intl_comparable
 
 
 @pytest.fixture(scope="module")
