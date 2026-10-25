@@ -88,17 +88,23 @@ def test_zero_with_any_exponent_is_zero() -> None:
 
 
 def _seconds(call: Callable[[], object]) -> float:
-    started = time.perf_counter()
+    # CPU time of this process, so other work on a busy machine does not count.
+    started = time.process_time()
     with contextlib.suppress(ValueError):
         call()
-    return time.perf_counter() - started
+    return time.process_time() - started
 
 
-def test_the_largest_values_take_well_under_a_second() -> None:
+def test_the_largest_values_cost_no_more_than_their_one_conversion() -> None:
+    # Converting a 100,000-digit int to Decimal and back is quadratic and is the one cost
+    # the digit bound accepts; it takes 0.1 s on a desktop and over 1 s on a slow laptop.
+    # Everything else must be cheap next to it.
     biggest = 10**MAX_DIGITS - 1
     grouped = format_indian(biggest)
-    assert _seconds(lambda: format_number(biggest, "en-IN")) < 1
-    assert _seconds(lambda: parse_indian(grouped)) < 1
+    to_decimal = _seconds(lambda: Decimal(biggest))
+    to_int = _seconds(lambda: int(Decimal(str(Decimal(biggest)))))
+    assert _seconds(lambda: format_number(biggest, "en-IN")) < 3 * to_decimal + 0.2
+    assert _seconds(lambda: parse_indian(grouped)) < 3 * to_int + 0.2
     huge = 1 << 40_000_000
     assert _seconds(lambda: format_number(huge, "en")) < 0.5  # refused before any conversion
 
