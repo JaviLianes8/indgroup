@@ -73,6 +73,7 @@ def test_a_missing_stderr_still_exits_with_status_two(monkeypatch: pytest.Monkey
         (["--locales"], ">&-", (1, b"", b"")),
         ([], "<&-", (2, b"", NO_VALUES)),
         (["-l", "de", "1234567"], "<&-", (0, b"1.234.567", b"")),
+        (["-l", "zz", "1"], "2>&-", (2, b"", b"")),
     ],
 )
 def test_a_closed_standard_stream_gives_no_traceback(
@@ -125,3 +126,41 @@ def test_other_write_errors_are_raised_not_taken_for_a_closed_pipe(code: int) ->
         main(["1"], stdin=io.StringIO(), stdout=_Failing(code))
     assert raised.value.errno == code
     assert not isinstance(raised.value, BrokenPipeError)
+
+
+@pytest.mark.parametrize(
+    ("argv", "stdin"),
+    [(["-l", "zz", "1"], b""), (["--nope"], b""), (["-l", "en"], b"abc\n"), ([], b"\xff\n")],
+)
+def test_a_stderr_reader_gone_before_the_error_still_gives_status_two(
+    argv: list[str], stdin: bytes
+) -> None:
+    # Without care, Python turns the failed flush of the error line into status 120 at exit.
+    read, write = os.pipe()
+    os.close(read)
+    try:
+        done = subprocess.run(
+            _python(*argv),
+            input=stdin,
+            stdout=subprocess.PIPE,
+            stderr=write,
+            env=_env(),
+            timeout=120,
+            check=False,
+        )
+    finally:
+        os.close(write)
+    assert (done.returncode, done.stdout) == (2, b"")
+
+
+def test_a_closed_stderr_in_process_still_exits_with_status_two(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _Gone(io.StringIO):
+        def write(self, text: str) -> int:
+            raise BrokenPipeError(errno.EPIPE, os.strerror(errno.EPIPE))
+
+    monkeypatch.setattr(sys, "stderr", _Gone())
+    with pytest.raises(SystemExit) as raised:
+        main(["--nope"], stdin=io.StringIO(), stdout=io.StringIO())
+    assert raised.value.code == 2

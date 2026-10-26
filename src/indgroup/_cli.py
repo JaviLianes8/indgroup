@@ -30,8 +30,8 @@ def _utf8(stream: TextIO | None, encoding: str = "utf-8", errors: str = "strict"
 
 
 def _fail(message: str) -> NoReturn:
-    if sys.stderr is not None:  # None when the process started without one
-        sys.stderr.write(f"indgroup: error: {message}\n")
+    # A stderr that is missing or whose reader left is treated as stdout is, so the status stays 2.
+    _write(sys.stderr, f"indgroup: error: {message}\n")
     raise SystemExit(2)
 
 

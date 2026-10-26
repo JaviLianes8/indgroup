@@ -74,6 +74,10 @@ needs a new major version.
   stdout it now stops quietly with status 1, as when its reader leaves; without stdin and
   VALUE arguments it reports that there are no values; without stderr an error still exits
   with status 2.
+- An error whose line could not be written because the reader of stderr had closed it
+  (`indgroup -l zz 1 2>&1 >/dev/null | true`) made Python exit with status 120 instead of 2.
+  The error line is dropped, as output is when the reader of stdout leaves, and the status
+  is 2.
 
 ### Added
 

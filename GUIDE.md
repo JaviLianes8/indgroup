@@ -223,7 +223,8 @@ reads the output of `indgroup` as UTF-8 can read its errors the same way. When t
 of stdout closes it early, as `indgroup < values.txt | head -1` does, the command stops
 quietly with status 1, and the same when it starts with stdout closed (`indgroup 5 >&-`).
 Started with stdin closed and no VALUE arguments, it reports that there are no values, with
-status 2.
+status 2. An error still exits with status 2 when the reader of stderr has closed it, or when
+the command starts with stderr closed (`indgroup -l zz 1 2>&-`); the error line is then lost.
 
 ## Data and its sources
 
