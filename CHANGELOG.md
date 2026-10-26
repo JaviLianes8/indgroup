@@ -55,6 +55,11 @@ needs a new major version.
   as the parsers do: a no-break space or other Unicode space at either end of a line is part
   of the value, so a stray group symbol is refused instead of dropped. Arguments are trimmed
   the same way, so ` 5 ` formats as on stdin.
+- On a pipe, the command line writes stderr as UTF-8, as it already read stdin and wrote
+  stdout, keeping Python's backslash escapes for text UTF-8 cannot carry. Before, on Windows,
+  an error quoting a non-ASCII argument came out in the legacy code page (`é` as the byte
+  `0xE9`) or as `\u` escapes for characters that code page lacks, so a program reading
+  both streams as UTF-8 failed on the error line.
 
 ### Fixed
 

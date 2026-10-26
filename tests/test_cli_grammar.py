@@ -99,6 +99,39 @@ def test_a_short_option_cluster_is_read_in_order() -> None:
     assert run("-ph", "--nope")[1].startswith("usage: indgroup ")
 
 
+def test_help_and_version_end_the_reading_in_their_long_form_too() -> None:
+    status, out = run("--help", "--nope")
+    assert status == 0 and out.startswith("usage: indgroup ")
+    assert run("--help", "--version")[1].startswith("usage: indgroup ")
+    assert run("--version", "--help") == (0, f"indgroup {__version__} (CLDR 48.0.0)\n")
+
+
+GROUPING = "--grouping must be one of auto, min2, always, off, not "
+
+
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (["-l==de", "1234567"], "not a locale tag: '=de'"),
+        (["-g==off", "1234567"], GROUPING + "'=off'"),
+        (["-l=", "de", "1234567"], "not a plain number: 'de'"),
+        (["--locale=", "de", "1234567"], "not a plain number: 'de'"),
+        (["--locale=", "1234567"], "not a locale tag: ''"),
+        (["-g=", "off", "1234567"], GROUPING + "''"),
+        (["--grouping=", "off", "1234567"], GROUPING + "''"),
+        (["--grouping", " off", "1234567"], GROUPING + "' off'"),
+        (["-g", " off", "1234567"], GROUPING + "' off'"),
+        (["--locale", " de", "1234567"], "not a locale tag: ' de'"),
+    ],
+)
+def test_an_option_value_is_taken_as_written(
+    capsys: pytest.CaptureFixture[str], argv: list[str], message: str
+) -> None:
+    # One equals sign joins an option to its value; an empty value stays empty, and
+    # nothing else is trimmed or taken from the next argument.
+    assert error_of(capsys, *argv) == f"indgroup: error: {message}\n"
+
+
 def _seconds(argv: list[str]) -> float:
     # CPU time of this process, so other work on a busy machine does not count.
     started = time.process_time()

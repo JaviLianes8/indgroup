@@ -209,15 +209,21 @@ hold nothing else are skipped; any other character, a no-break space included, i
 the value, as in `parse_number`. `-l/--locale` picks the locale (default `en-IN`),
 `-g/--grouping` the strategy, `--locales` lists the locales, `--version` shows the package
 and CLDR versions and `-h/--help` the options. Long options may be shortened to any unique
-prefix (`--pars`).
+prefix (`--pars`). An option's value is taken as written: one `=` may join it to the option
+(`-l=de`, `--locale=de`), so `-l==de` asks for the locale `=de` and `--locale=` for an empty
+one, and nothing around it is trimmed. `-h/--help` and `--version` end the reading of the
+arguments, so whichever comes first is shown and anything after it is ignored.
 
 An argument that starts with a minus followed by a digit or a point (`-1e5`, `-1.234,5`)
 is a value, the same on every Python version; put `--` before any other value that starts
 with a minus. Errors, argument errors included, print one line on stderr, quoting at most
-40 characters of an argument, and exit with status 2. When the reader of stdout closes it
-early, as `indgroup < values.txt | head -1` does, the command stops quietly with status 1, and
-the same when it starts with stdout closed (`indgroup 5 >&-`). Started with stdin closed and
-no VALUE arguments, it reports that there are no values, with status 2.
+40 characters of an argument, and exit with status 2. On a pipe, stdin, stdout and stderr
+are UTF-8 whatever the system encoding (the legacy code page on Windows), so a program that
+reads the output of `indgroup` as UTF-8 can read its errors the same way. When the reader
+of stdout closes it early, as `indgroup < values.txt | head -1` does, the command stops
+quietly with status 1, and the same when it starts with stdout closed (`indgroup 5 >&-`).
+Started with stdin closed and no VALUE arguments, it reports that there are no values, with
+status 2.
 
 ## Data and its sources
 

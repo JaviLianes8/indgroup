@@ -22,11 +22,11 @@ _BOM = chr(0xFEFF)
 _PLAIN = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,4})?")
 
 
-def _utf8(stream: TextIO | None, encoding: str = "utf-8") -> None:
+def _utf8(stream: TextIO | None, encoding: str = "utf-8", errors: str = "strict") -> None:
     # Pipes default to the legacy code page on Windows, which cannot carry U+202F and friends.
     reconfigure = getattr(stream, "reconfigure", None)
     if reconfigure is not None and stream is not None and not stream.isatty():
-        reconfigure(encoding=encoding)
+        reconfigure(encoding=encoding, errors=errors)
 
 
 def _fail(message: str) -> NoReturn:
@@ -89,8 +89,8 @@ def main(
 
     Bad arguments, an unknown locale, a value that cannot be read or stdin that is not
     UTF-8 print one line on stderr and exit with status 2 through ``SystemExit``. Without
-    streams it reads ``sys.stdin`` and writes ``sys.stdout``, switching them to UTF-8 when
-    they are pipes.
+    streams it reads ``sys.stdin`` and writes ``sys.stdout``, switching each one it uses
+    to UTF-8 when it is a pipe, and ``sys.stderr`` too when it writes ``sys.stdout``.
     """
     from . import __version__
 
@@ -103,6 +103,8 @@ def main(
     if target is None:
         target = sys.stdout
         _utf8(target)
+        # A program that reads stdout as UTF-8 reads stderr the same way; never fail on it.
+        _utf8(sys.stderr, errors="backslashreplace")
     try:
         args = read_args(list(sys.argv[1:] if argv is None else argv))
     except UsageError as error:

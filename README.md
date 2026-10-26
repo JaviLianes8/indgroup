@@ -118,6 +118,7 @@ Values come from the arguments or from stdin, one per line. `-l/--locale` picks 
 `--locales` lists the locales. An argument that starts with a minus followed by a digit or a
 point, such as `-1e5` or `-1.234,5`, is a value on every Python version; put `--` before any
 other value that starts with a minus. Errors print one line on stderr and exit with status 2.
+On a pipe, stdin, stdout and stderr are UTF-8 on every system.
 
 ## API
 
