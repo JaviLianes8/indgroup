@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ._locale import resolve_locale, table
+from ._locale import resolve_locale
+from ._table import table
 
 
 @dataclass(frozen=True)

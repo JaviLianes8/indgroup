@@ -30,7 +30,7 @@ def test_a_script_other_than_the_likely_one_falls_back_to_the_root(tag: str) -> 
         ("zh-Hans-TW", "zh"),
         ("hi-Latn-IN", "hi-Latn"),
         ("ca-Latn-ES-valencia", "ca-ES-valencia"),
-        ("ku-GE", "ku"),
+        ("ku-Latn-GE", "ku"),
     ],
 )
 def test_the_likely_script_and_the_explicit_parents_keep_their_data(

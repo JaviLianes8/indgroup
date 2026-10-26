@@ -6,13 +6,14 @@ import re
 from decimal import Decimal
 from typing import TypeAlias
 
+from ._bigint import to_decimal
+
 Number: TypeAlias = int | float | Decimal
 
 DIGITS = re.compile(r"[0-9]+")
 
-# A bound on the digits written on each side of the decimal point. Converting between int
-# and Decimal takes quadratic time (a million digits take seconds), so longer values are
-# refused instead of hanging the caller.
+# A bound on the digits written on each side of the decimal point, so that a hostile input
+# cannot make a call build or convert text of any length (see _bigint for the conversions).
 MAX_DIGITS = 100_000
 _INT_LIMIT = 10**MAX_DIGITS
 
@@ -46,7 +47,7 @@ def split_value(value: object) -> tuple[bool, str, str]:
     if isinstance(value, int):
         if int.__abs__(value) >= _INT_LIMIT:
             raise too_long("integer part")
-        number = Decimal(value)  # no int-to-str conversion, so no 4300-digit limit
+        number = to_decimal(int.__int__(value))  # past the 4300-digit limit of str
     elif isinstance(value, float):
         number = Decimal(float.__repr__(value))
         from_float = True

@@ -1,0 +1,100 @@
+"""The values the command line formats: every finite plain spelling a Decimal takes, in ASCII,
+bounded by the library's 100,000 digits rather than by the length of the exponent."""
+
+from __future__ import annotations
+
+import io
+import time
+
+import pytest
+
+from indgroup._args import HELP
+from indgroup._cli import main
+
+
+def run(*argv: str) -> tuple[int, str]:
+    out = io.StringIO()
+    status = main(list(argv), stdin=io.StringIO(""), stdout=out)
+    return status, out.getvalue()
+
+
+def error_of(capsys: pytest.CaptureFixture[str], *argv: str) -> str:
+    with pytest.raises(SystemExit) as raised:
+        run(*argv)
+    assert raised.value.code == 2
+    error = capsys.readouterr().err
+    assert error.count("\n") == 1 and len(error) < 150, error[:200]
+    return error
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (["-l", "en", ".5"], "0.5\n"),
+        (["-l", "en", "-.5"], "-0.5\n"),
+        (["-l", "en", "--", ".5", "5.", "+.25"], "0.5\n5\n0.25\n"),
+        (["-l", "de", "-1.e3"], "-1.000\n"),
+        (["1e0005"], "1,00,000\n"),
+        (["1E+3", "1e-3", "-0.5E1"], "1,000\n0.001\n-5\n"),
+        (["0e99999999999999999999"], "0\n"),
+        (["-0e-0"], "-0\n"),
+    ],
+)
+def test_every_plain_decimal_spelling_formats(argv: list[str], expected: str) -> None:
+    assert run(*argv) == (0, expected)
+
+
+def test_the_exponent_is_bounded_by_the_digits_it_makes() -> None:
+    status, out = run("-l", "en", "-g", "off", "1e10000")
+    assert (status, out) == (0, "1" + "0" * 10_000 + "\n")
+    status, out = run("-l", "en", "-g", "off", "1e99999")
+    assert (status, len(out)) == (0, 100_001)
+    status, out = run("-l", "en", "-g", "off", "1e-99999")
+    assert (status, len(out)) == (0, 100_002)
+
+
+@pytest.mark.parametrize(
+    ("value", "part"),
+    [
+        ("1e100000", "integer part"),
+        ("1e99999999999999999999", "integer part"),
+        pytest.param("1e" + "9" * 100_000, "integer part", id="exponent-of-100000-digits"),
+        ("1e-100001", "fraction"),
+        ("-1e-" + "9" * 30, "fraction"),
+        ("0e-100001", "fraction"),
+    ],
+)
+def test_values_past_the_digit_bound_say_so(
+    capsys: pytest.CaptureFixture[str], value: str, part: str
+) -> None:
+    assert f"more than 100,000 digits in its {part}" in error_of(capsys, "--", value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        *["1e", ".", "e5", "-.", "1.2.3", "0x10", "1_000", "+-1", "", "1 000", "Infinity"],
+        *["NaN", chr(0xFF11), "1e+-5", "1e5.0", chr(0x0661), "1" + chr(0x00A0) + "000"],
+    ],
+)
+def test_anything_else_is_not_a_plain_number(
+    capsys: pytest.CaptureFixture[str], value: str
+) -> None:
+    assert "not a plain number" in error_of(capsys, "--", value)
+
+
+def test_a_huge_exponent_is_read_in_linear_time(capsys: pytest.CaptureFixture[str]) -> None:
+    for value in ["1e" + "0" * 2_000_000 + "x", "1e" + "0" * 2_000_000 + "5"]:
+        started = time.perf_counter()
+        status = 0
+        try:
+            status = run("--", value)[0]
+        except SystemExit as raised:
+            status = int(str(raised.code))
+        assert time.perf_counter() - started < 1
+        assert status in (0, 2)
+    capsys.readouterr()
+
+
+def test_help_states_the_value_grammar() -> None:
+    assert ".5" in HELP and "1e6" in HELP and "exponent" in HELP

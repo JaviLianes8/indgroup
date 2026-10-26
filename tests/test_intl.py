@@ -12,11 +12,10 @@ from decimal import Decimal
 from typing import Any, cast
 
 import pytest
-from conftest import KNOWN_ICU_DIFFERENCES, intl_comparable, upstream_json
+from conftest import intl_comparable, upstream_json
 
 from indgroup import Grouping, format_number, parse_number
 
-_KNOWN = KNOWN_ICU_DIFFERENCES
 _comparable = intl_comparable
 
 
@@ -34,20 +33,17 @@ def test_every_locale_value_and_grouping_matches_intl(reference: Any) -> None:
         if not _comparable(tag, resolved):
             continue
         got = format_number(Decimal(value), tag, grouping=cast(Grouping, grouping))
-        if tag in _KNOWN:
-            icu, cldr = _KNOWN[tag]
-            expected = expected.replace(icu, cldr)
         assert got == expected, (tag, grouping, value)
         compared.add(tag)
         cases += 1
     assert (len(compared), cases) == (650, 60168)
-    probes = {"en-IN", "hi", "es", "pl", "ee", "fr", "de-CH", "tok", "fa", "zh-TW", "iw"}
+    probes = {"en-IN", "hi", "es", "pl", "ee", "fr", "fr-CH", "de-CH", "tok", "fa", "zh-TW", "iw"}
     assert probes <= compared
 
 
 def test_every_intl_output_parses_back(reference: Any) -> None:
     for tag, _grouping, value, resolved, expected in reference["cases"]:
-        if not _comparable(tag, resolved) or tag in _KNOWN:
+        if not _comparable(tag, resolved):
             continue
         back = parse_number(expected, tag)
         assert Decimal(back) == Decimal(value), (tag, expected)

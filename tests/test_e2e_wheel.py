@@ -35,7 +35,7 @@ assert importlib.metadata.version("indgroup") == indgroup.__version__
 assert importlib.resources.files("indgroup").joinpath("py.typed").is_file()
 meta = importlib.metadata.metadata("indgroup")
 assert meta["License-Expression"] == "MIT AND Unicode-3.0", meta["License-Expression"]
-assert cldr_version() == "48.0.0" and len(supported_locales()) == 766
+assert cldr_version() == "48.2.0" and len(supported_locales()) == 766
 assert format_indian(1234567) == "12,34,567"
 assert format_indian(0.1) == "0.1"
 assert parse_indian("12,34,567.50") == Decimal("1234567.50")

@@ -96,9 +96,8 @@ def _seconds(call: Callable[[], object]) -> float:
 
 
 def test_the_largest_values_cost_no_more_than_their_one_conversion() -> None:
-    # Converting a 100,000-digit int to Decimal and back is quadratic and is the one cost
-    # the digit bound accepts; it takes 0.1 s on a desktop and over 1 s on a slow laptop.
-    # Everything else must be cheap next to it.
+    # Python's own conversion of a 100,000-digit int to Decimal and back is quadratic; the
+    # package's conversions are faster, and nothing else may cost much next to them.
     biggest = 10**MAX_DIGITS - 1
     grouped = format_indian(biggest)
     to_decimal = _seconds(lambda: Decimal(biggest))

@@ -130,7 +130,7 @@ BAD_VALUES = [
     lambda: format_number(1, "en_"),
     lambda: parse_number("1.234,5", "en"),
     lambda: parse_number("+1", "en"),
-    lambda: resolve_locale("zh-cmn"),
+    lambda: resolve_locale("zh-abc"),
     lambda: resolve_locale(""),
 ]
 UNKNOWN_LOCALES = [

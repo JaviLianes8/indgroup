@@ -67,8 +67,9 @@ print(ascii(format_number(-5, "sv")))
 Nothing is rounded: a `Decimal` keeps every digit it has, trailing zeros included, and a
 `float` is read through its shortest round-trip spelling, so `0.1` prints `0.1` and not the
 binary value it stands for, and a whole float such as `5.0` prints `5`, as in Intl. Values
-with more than 100,000 digits before or after the point are refused with `ValueError`
-(converting between `int` and `Decimal` takes quadratic time, so longer values would hang).
+with more than 100,000 digits before or after the point are refused with `ValueError`, so
+no input can make a call build text without end; the longest values take about a tenth of
+a second, since long integers are converted in better than quadratic time.
 
 Parsing is strict. It takes the locale's own minus, decimal and group symbols, ASCII digits
 only, and groups exactly where the locale writes them, or none at all; a grouped number never
@@ -113,9 +114,11 @@ $ indgroup --parse 12,34,567.50
 1234567.50
 ```
 
-Values come from the arguments or from stdin, one per line. `-l/--locale` picks the locale
-(default `en-IN`), `-g/--grouping` the strategy, `-p/--parse` reads grouped values back,
-`--locales` lists the locales. An argument that starts with a minus followed by a digit or a
+Values come from the arguments or from stdin, one per line. A value to format is ASCII
+digits with an optional sign, decimal point and exponent (`1234.5`, `-.5`, `5.`, `1e6`),
+with at most 100,000 digits on each side of the point once the exponent is applied.
+`-l/--locale` picks the locale (default `en-IN`), `-g/--grouping` the strategy,
+`-p/--parse` reads grouped values back, `--locales` lists the locales. An argument that starts with a minus followed by a digit or a
 point, such as `-1e5` or `-1.234,5`, is a value on every Python version; put `--` before any
 other value that starts with a minus. Errors print one line on stderr and exit with status 2.
 On a pipe, stdin, stdout and stderr are UTF-8 on every system.
@@ -124,7 +127,7 @@ On a pipe, stdin, stdout and stderr are UTF-8 on every system.
 
 | Name | What it does |
 | --- | --- |
-| `format_indian(value, *, separator=",")` | Indian lakh and crore grouping, any single separator |
+| `format_indian(value, *, separator=",")` | Indian lakh and crore grouping; the separator is one character other than a digit, a sign or `.` |
 | `parse_indian(text, *, separator=",")` | strict inverse of `format_indian`, `int` or `Decimal` |
 | `format_number(value, locale, *, grouping="auto")` | the locale's symbols and grouping, no rounding |
 | `parse_number(text, locale)` | strict inverse of `format_number` |
@@ -132,7 +135,7 @@ On a pipe, stdin, stdout and stderr are UTF-8 on every system.
 | `NumberSymbols` | frozen value: `locale`, `decimal`, `group`, `minus`, `primary`, `secondary`, `min_grouping` |
 | `resolve_locale(locale)` | the CLDR locale a tag reads, or `LookupError` |
 | `supported_locales()` | the 766 CLDR locales, sorted |
-| `cldr_version()` | the CLDR release of the table, `48.0.0` |
+| `cldr_version()` | the CLDR release of the table, `48.2.0` |
 | `Number` | `int \| float \| Decimal` |
 | `Grouping` | `Literal["auto", "min2", "always", "off"]` |
 
@@ -149,13 +152,16 @@ each release.
 The 637 CLDR locales that ICU ships under their own name, 13 alias and fallback tags such as
 `iw` and `de-AT-1996`, the four grouping strategies and a set of integers and decimals are
 checked against `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48) with Latin digits.
-They agree everywhere except Swiss French, where the ICU data writes an apostrophe while
-CLDR 48 gives `fr-CH` no group symbol of its own, so it inherits the narrow no-break space
-of `fr`. This library follows CLDR there, and in two more places where Intl does not:
+They agree everywhere, Swiss French included: CLDR 48.2.0 gave `fr-CH` an apostrophe as its
+group symbol, and ICU 78.3 carries it. This library follows CLDR in three places where Intl
+does not:
 
 - A tag in a script other than its language's likely one, such as `ru-Latn` or `hi-Arab`,
   reads the root locale, as CLDR's `nonlikelyScript` parent rule says; Intl reads `ru` and
-  `hi`.
+  `hi`. The same holds for a tag whose region's likely script has no data: `ku-GE` is
+  `ku-Cyrl-GE` in CLDR's likely subtags and reads the root, where Intl reads `ku`.
+- The legacy tags CLDR replaces read their replacement, such as `zh-yue` (`yue`), `no-bok`
+  (`nb`) and `i-lux` (`lb`); Intl refuses them with `RangeError`.
 - A tag that spells out its language's likely script, such as `de-Latn-AT` or `en-Latn-IN`,
   reads `de-AT` and `en-IN`, as UTS #35 says the lookup starts without that script; Intl
   drops the region and reads `de` and `en`, so `de-Latn-AT` writes `-1.234.567,5` there.

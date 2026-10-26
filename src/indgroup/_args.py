@@ -34,8 +34,10 @@ options:
                        (default: auto)
   -p, --parse          read values grouped the locale's way and print them plain
 
-An argument that starts with a minus followed by a digit or a point, such as -1e5, is a
-value. Put -- before any other value that starts with a minus.
+A VALUE to format is ASCII digits with an optional sign, point and exponent, such as
+1234.5, -.5, 5. or 1e6; at most 100,000 digits on each side of the point. An argument
+that starts with a minus followed by a digit or a point, such as -1e5, is a value. Put --
+before any other value that starts with a minus.
 """
 
 _LONG = ("--help", "--version", "--locales", "--locale", "--grouping", "--parse")

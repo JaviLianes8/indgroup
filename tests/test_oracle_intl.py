@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from conftest import KNOWN_ICU_DIFFERENCES, intl_comparable
+from conftest import intl_comparable
 from generators import GROUPINGS, SEEDS, decimal_text, locales
 
 from indgroup import Grouping, format_number, parse_number
@@ -54,9 +54,6 @@ def test_random_values_match_intl_and_parse_back(seed: int) -> None:
         if not intl_comparable(tag, resolved):
             continue
         assert expected is not None
-        if tag in KNOWN_ICU_DIFFERENCES:
-            icu, cldr = KNOWN_ICU_DIFFERENCES[tag]
-            expected = expected.replace(icu, cldr)
         value = Decimal(text)
         got = format_number(value, tag, grouping=cast(Grouping, grouping))
         assert got == expected, (tag, grouping, text)

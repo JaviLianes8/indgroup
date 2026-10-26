@@ -47,7 +47,7 @@ def test_values_after_a_double_dash_keep_their_order(
 
 def test_any_unique_prefix_of_three_characters_names_an_option() -> None:
     assert run("--p", "12,34,567") == (0, "1234567\n")
-    assert run("--v") == (0, f"indgroup {__version__} (CLDR 48.0.0)\n")
+    assert run("--v") == (0, f"indgroup {__version__} (CLDR 48.2.0)\n")
     assert run("--h")[1].startswith("usage: indgroup ")
 
 
@@ -89,7 +89,7 @@ def test_locales_wins_over_other_flags_in_any_order() -> None:
 
 def test_a_lone_dash_is_a_value(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("--locales", "-") == (0, LOCALES)
-    assert run("-", "--version") == (0, f"indgroup {__version__} (CLDR 48.0.0)\n")
+    assert run("-", "--version") == (0, f"indgroup {__version__} (CLDR 48.2.0)\n")
     assert "not a plain number: '-'" in error_of(capsys, "-")
 
 
@@ -103,7 +103,7 @@ def test_help_and_version_end_the_reading_in_their_long_form_too() -> None:
     status, out = run("--help", "--nope")
     assert status == 0 and out.startswith("usage: indgroup ")
     assert run("--help", "--version")[1].startswith("usage: indgroup ")
-    assert run("--version", "--help") == (0, f"indgroup {__version__} (CLDR 48.0.0)\n")
+    assert run("--version", "--help") == (0, f"indgroup {__version__} (CLDR 48.2.0)\n")
 
 
 GROUPING = "--grouping must be one of auto, min2, always, off, not "

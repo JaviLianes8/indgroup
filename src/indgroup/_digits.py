@@ -6,6 +6,7 @@ import re
 from decimal import Decimal
 from functools import lru_cache
 
+from ._bigint import to_int
 from ._value import DIGITS, MAX_DIGITS, shown, too_long
 
 SPACE = " \t\r\n"  # trimmed around values; never a group symbol such as U+00A0
@@ -76,6 +77,6 @@ def read_number(
     if len(fraction) > MAX_DIGITS:
         raise too_long("fraction")
     if not point:
-        number = int(Decimal(digits))  # int(str) stops at 4300 digits
+        number = to_int(digits)  # int(str) stops at 4300 digits and takes quadratic time
         return -number if negative else number
     return Decimal(f"{'-' if negative else ''}{digits}.{fraction}")

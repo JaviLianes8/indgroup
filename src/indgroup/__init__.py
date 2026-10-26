@@ -1,7 +1,7 @@
 """Format and parse numbers with Indian lakh and crore grouping and every Unicode CLDR locale.
 
 - ``format_indian`` and ``parse_indian`` write and read the Indian grouping (``12,34,567``)
-  with any one-character separator.
+  with a one-character separator other than a digit, a sign or ``.``.
 - ``format_number`` and ``parse_number`` write and read a number the way a CLDR locale
   does; ``number_symbols``, ``resolve_locale``, ``supported_locales`` and ``cldr_version``
   describe the locale data.

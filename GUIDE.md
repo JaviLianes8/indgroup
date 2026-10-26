@@ -32,7 +32,7 @@ print(repr(parse_indian("+1,00,000")), repr(parse_indian("10000000")))
 
 `format_number(value, locale, *, grouping="auto")` reads the decimal, group and minus
 symbols, the grouping sizes of the standard decimal pattern and the minimum grouping digits
-that Unicode CLDR 48 records for the locale's Latin digits. `number_symbols(locale)` returns
+that Unicode CLDR 48.2 records for the locale's Latin digits. `number_symbols(locale)` returns
 them as a frozen `NumberSymbols`.
 
 `grouping` takes the `useGrouping` values of `Intl.NumberFormat`:
@@ -70,25 +70,39 @@ sign, and for Persian a left-to-right mark before it.
 `resolve_locale(locale)` names the CLDR locale whose data a tag reads; `format_number`,
 `parse_number` and `number_symbols` all go through it.
 
-- BCP 47 (`pt-BR`) and POSIX (`pt_BR.UTF-8`, `sr_RS@latin`) spellings, in any case.
+- BCP 47 (`pt-BR`) and POSIX (`pt_BR.UTF-8`, `sr_RS@latin`) spellings, in any case. A
+  script in the tag wins over a POSIX modifier: `uz-Arab@latin` reads `uz-Arab`.
 - Deprecated codes are replaced (`iw` is `he`, `sh` is `sr-Latn`, `UK` is `GB`, `756` is
   `CH`). A region code with several replacements takes the language's likely region when it
   is one of them, else the first one listed, as UTS #35 says (`en-200` reads `en-CZ`,
-  `ar-NT` reads `ar-SA`).
-- A language written in several scripts gets its likely script (`zh-TW` reads
-  `zh-Hant`, `sr-ME` reads `sr-Latn-ME`), where data in that script exists.
+  `ar-NT` reads `ar-SA`). A language code whose replacement carries a region gives it only
+  to a tag without one: `swc` reads `sw-CD`, but `swc-KE` reads `sw-KE`.
+- The legacy tags of several subtags that CLDR replaces read their replacement, with the
+  tag's own script and region kept: `zh-yue-HK` is `yue-HK`, `zh-cmn-Hant` is `zh-Hant`,
+  `no-bok` is `nb`, `i-lux` is `lb`, `art-lojban` is `jbo`, `sv-aaland` is `sv-AX`. Where
+  the replacement has no number data the tag raises `LookupError`, as any unknown language
+  does: `hy-arevmda` is Western Armenian (`hyw`) and `zh-hakka` is Hakka (`hak`), so neither
+  reads Armenian or Chinese.
+- A tag without a script gets its likely one, from the region where it differs (`zh-TW`
+  reads `zh-Hant`, `sr-ME` reads `sr-Latn-ME`), and then reads what that full form reads.
+  Where the script has no data, that is the root, by the rule of the next point: `ku-GE` is
+  `ku-Cyrl-GE`, and `ky-CN`, `tg-PK` and `ug-KZ` likewise read `und`.
 - A locale without data of its own falls back through the CLDR parent locales, then by
   dropping subtags (`pt-FR` reads `pt-PT`, `de-AT-1996` reads `de-AT`). A language in a script
   other than its likely one falls back to the root, as CLDR's `nonlikelyScript` rule says
   (`ru-Latn` and `hi-Arab` read `und`, not `ru` and `hi`). Unicode extensions such as
   `-u-nu-arab` and private use (`-x-...`) do not change anything.
 - `und` and `root` are the root locale. An unknown language raises `LookupError` rather than
-  reading another language's data; text that is not a tag raises `ValueError`, including a
-  four-letter language subtag or any subtag longer than eight characters. Subtags after the
-  region are not checked against BCP 47's variant grammar: `en-US-abcd` reads `en`.
+  reading another language's data. Text that is not a tag raises `ValueError`: an empty
+  subtag, a subtag longer than eight characters or with characters other than ASCII letters
+  and digits, in any position, a language subtag that is not two, three or five to eight
+  letters, and an extended language subtag (three letters right after the language) other
+  than those of the legacy tags above, such as `en-abc` or `zh-abc-HK`. Subtags after the
+  script or region are read as variants without checking BCP 47's variant grammar:
+  `en-US-abcd` and `en-Latn-abc` read `en`.
 
-`supported_locales()` lists the 766 locales of the CLDR 48 JSON packages, every one with
-number data, and `cldr_version()` the CLDR release, `48.0.0`. CLDR's XML has one more locale
+`supported_locales()` lists the 766 locales of the CLDR 48.2 JSON packages, every one with
+number data, and `cldr_version()` the CLDR release, `48.2.0`. CLDR's XML has one more locale
 with number data, `en_US_POSIX`, which the JSON packages leave out: `en-US-POSIX` reads `en`.
 
 ```python
@@ -122,8 +136,9 @@ Values are `int`, `float` or `Decimal` (`bool` is refused). Nothing is rounded.
 - Subclasses of `int`, `float`, `Decimal` and `str` are read by their value: their methods
   are never called.
 - More than 100,000 digits before or after the point raise `ValueError`, in formatting and
-  in parsing: converting between `int` and `Decimal` takes quadratic time, and this bound
-  keeps every call well under a second.
+  in parsing, so that no input can make a call build text without end. Long integers are
+  converted to and from decimal digits in better than quadratic time, so the longest
+  values take about a tenth of a second on a desktop, well under a second.
 
 ## Strict parsing
 
@@ -193,7 +208,7 @@ members of each.
 | Exception | Raised for |
 | --- | --- |
 | `TypeError` | a value that is not an `int`, `float` or `Decimal`, a `bool`, or a text, locale, separator or grouping that is not a `str` |
-| `ValueError` | NaN, infinities, more than 100,000 digits on a side, a bad separator, an unknown grouping, malformed text, a malformed locale tag |
+| `ValueError` | NaN, infinities, more than 100,000 digits on a side, a bad separator, an unknown grouping, malformed text, a malformed locale tag (an extended language subtag CLDR does not replace included) |
 | `LookupError` | a locale tag whose language has no CLDR number data |
 
 Messages quote at most 40 characters of the input. A longer input is cut to its first 40
@@ -201,8 +216,13 @@ characters, followed by `...` and its length, such as `(100000 characters)`.
 
 ## Command line
 
-`indgroup VALUE...` (or `python -m indgroup`) formats plain numbers such as `1234.5`,
-`-7` or `1e6`; `-p/--parse` reads grouped values back and prints them plain. Without values
+`indgroup VALUE...` (or `python -m indgroup`) formats plain numbers: ASCII digits with an
+optional sign (`+` or `-`), an optional decimal point with digits on either side or both
+(`1234.5`, `-.5`, `5.`) and an optional exponent (`1e6`, `2.5E-3`), of any length. Once the
+exponent is applied, the library's bound decides: at most 100,000 digits on each side of
+the point, so `1e99999` prints and `1e100000` is refused as too long. Anything else, such
+as `1,234`, `1_000`, `0x10` or `Infinity`, is not a plain number. `-p/--parse` reads
+grouped values back and prints them plain. Without values
 it reads stdin, one value per line, as UTF-8 (a byte order mark is skipped). Spaces, tabs
 and line breaks around a value are ignored, in arguments and on stdin alike, and lines that
 hold nothing else are skipped; any other character, a no-break space included, is part of
@@ -228,15 +248,17 @@ the command starts with stderr closed (`indgroup -l zz 1 2>&-`); the error line 
 
 ## Data and its sources
 
-The table in the package is derived from the CLDR 48.0.0 JSON packages by
+The table in the package is derived from the CLDR 48.2.0 JSON packages by
 `scripts/build_table.py`, and the tests check that a fresh derivation gives the shipped file
 byte for byte. The grouping rule follows ICU's `number_grouping.cpp` (release 78.3). Output
 is compared with `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48): the recorded
 reference covers the 637 CLDR locales that ICU ships under their own name and 13 alias and
 fallback tags (such as `iw`, `en-UK` and `de-AT-1996`) in four groupings, and a live run
-compares random values. They agree everywhere except `fr-CH`, where ICU's data writes an
-apostrophe and CLDR 48 inherits the narrow no-break space of `fr`; this library follows CLDR,
-as it does for the `nonlikelyScript` rule, which Intl does not apply. A tag that spells out
+compares random values. They agree everywhere, `fr-CH` included: CLDR 48.2.0 gave it an
+apostrophe as its group symbol, where 48.0.0 inherited the narrow no-break space of `fr`, and
+ICU 78.3 carries the apostrophe. This library follows CLDR where Intl does not: it applies the
+`nonlikelyScript` rule (`ru-Latn` and `ku-GE` read the root, Intl reads `ru` and `ku`), and
+reads the legacy tags CLDR replaces (`zh-yue`, `no-bok`, `i-lux`), which Intl refuses. A tag that spells out
 its language's likely script, such as `de-Latn-AT`, reads `de-AT` here, as UTS #35 says the
 lookup starts without that script; Intl drops the region and reads `de`. One difference goes
 the other way: Intl follows CLDR's XML, which gives `en_US_POSIX` number data of its own, while

@@ -29,11 +29,6 @@ def upstream_json(name: str) -> Any:
     return json.loads(read_upstream(name).decode("utf-8"))
 
 
-# ICU's own data writes an apostrophe for Swiss French; the CLDR 48 JSON has no group of
-# its own for fr-CH and inherits the narrow no-break space of fr. CLDR wins here.
-KNOWN_ICU_DIFFERENCES = {"fr-CH": ("'", chr(0x202F))}
-
-
 def intl_comparable(tag: str, resolved: str | None) -> bool:
     """Whether Intl formatted ``tag`` with the locale this library reads for it.
 

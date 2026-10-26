@@ -34,7 +34,7 @@ def _build_script() -> ModuleType:
 
 def _cldr_numbers() -> dict[str, Any]:
     found: dict[str, Any] = {}
-    body = read_upstream("cldr-numbers-full-48.0.0.tgz")
+    body = read_upstream("cldr-numbers-full-48.2.0.tgz")
     with tarfile.open(fileobj=io.BytesIO(body)) as archive:
         for member in archive.getmembers():
             if member.name.endswith("/numbers.json"):
@@ -46,8 +46,8 @@ def _cldr_numbers() -> dict[str, Any]:
 
 
 def test_the_shipped_table_is_a_fresh_derivation_from_cldr() -> None:
-    read_upstream("cldr-core-48.0.0.tgz")
-    read_upstream("cldr-numbers-full-48.0.0.tgz")
+    read_upstream("cldr-core-48.2.0.tgz")
+    read_upstream("cldr-numbers-full-48.2.0.tgz")
     script = _build_script()
     # The table of the package under test: the source tree, or an installed wheel.
     shipped = files("indgroup").joinpath("_cldr.json").read_text(encoding="ascii")

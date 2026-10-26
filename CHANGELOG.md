@@ -11,12 +11,31 @@ All notable changes to this project are documented here. The format follows
 The first stable release. The public API is the eleven names of 0.2.0 with their
 signatures, parameter names and defaults unchanged: `format_indian`, `parse_indian`,
 `format_number`, `parse_number`, `number_symbols`, `NumberSymbols`, `resolve_locale`,
-`supported_locales`, `cldr_version`, `Number` and `Grouping`. The number data is CLDR 48.0.0
+`supported_locales`, `cldr_version`, `Number` and `Grouping`. The number data is CLDR 48.2.0
 for all 766 locales. From here on, a change to any of them, or to the exceptions they raise,
 needs a new major version.
 
 ### Changed
 
+- The number data is CLDR 48.2.0 (0.2.0 had 48.0.0). The one change for numbers is Swiss
+  French: `fr-CH` groups with an apostrophe (`1'234'567,89`), as CLDR 48.2.0 and ICU 78.3
+  write it, instead of the narrow no-break space of `fr`; `parse_number` reads it the same
+  way. `cldr_version()` returns `48.2.0`.
+- `resolve_locale` applies CLDR's language aliases of several subtags, keeping the tag's own
+  script and region: `zh-yue-HK` reads `yue`, `zh-cmn-Hant` reads `zh-Hant`, `no-bok` reads
+  `nb`, `i-lux` reads `lb`, `art-lojban` reads `jbo` and `sv-aaland` reads `sv-AX`. In 0.2.0
+  these raised `ValueError` or `LookupError`, or read the wrong data. An alias whose
+  replacement has no number data raises `LookupError` instead of reading the data of the
+  tag's first subtag: `hy-arevmda` (Western Armenian) read `hy`, `zh-hakka` and `zh-xiang`
+  read `zh`. Other extended language subtags (`en-abc`) still raise `ValueError`.
+- A tag whose region's likely script differs from its language's and has no data reads what
+  its full form reads, the root locale, as CLDR's likely subtags and `nonlikelyScript` rule
+  say: `ku-GE` (`ku-Cyrl-GE`), `ku-AM`, `ku-AZ`, `ku-TM`, `ky-CN`, `ky-TR`, `tg-PK`, `ug-KZ`,
+  `ug-MN` and `lzz-GE`. 0.2.0 read the language, so Cyrillic Kurdish took Latin Kurdish
+  symbols.
+- Long integers are converted to and from decimal digits in better than quadratic time, so
+  parsing or formatting a 100,000-digit integer takes about a third of the time it did, and
+  eight times the digits cost 13 to 25 times as long where they cost 64 times as long.
 - The digit bound is now 100,000 digits before the point and 100,000 after it, checked in
   formatting and in parsing (`ValueError`). 0.2.0 allowed a million integer digits, which took
   seconds to convert between `int` and `Decimal`, and bounded neither the fraction nor the
@@ -42,6 +61,11 @@ needs a new major version.
 - A tag that names its language's likely script reads the same locale as without it for
   every language, not only those written in several scripts: `ru-Cyrl-UA` reads `ru-UA`
   and `ca-Latn-ES-valencia` reads `ca-ES-valencia`.
+- The command line formats every finite plain spelling of a number in ASCII: `.5`, `-.5`,
+  `5.` and exponents of any length, such as `1e10000`. 0.2.0 refused these as not a plain
+  number, and refused exponents of more than four digits even where the value was within the
+  digit bound. A value past the bound once its exponent is applied now gets the library's
+  error, `more than 100,000 digits`, and `--help` states the grammar.
 - The command line reads its arguments without `argparse`, so it behaves the same on every
   Python version. An argument that starts with a minus followed by a digit or a point, such
   as `-1e5` or `-1.234,5`, is a value; before, Python 3.10 to 3.13 took it for an unknown

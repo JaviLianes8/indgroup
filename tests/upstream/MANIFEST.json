@@ -1,21 +1,21 @@
 {
-  "cldr-numbers-full-48.0.0.tgz": {
-    "title": "Unicode CLDR 48.0.0 JSON, number data of every locale (symbols, patterns, minimum grouping digits)",
-    "url": "https://registry.npmjs.org/cldr-numbers-full/-/cldr-numbers-full-48.0.0.tgz",
-    "revision": "npm package cldr-numbers-full 48.0.0, built from unicode-org/cldr-json tag 48.0.0",
-    "fetched": "2026-10-25",
+  "cldr-numbers-full-48.2.0.tgz": {
+    "title": "Unicode CLDR 48.2.0 JSON, number data of every locale (symbols, patterns, minimum grouping digits)",
+    "url": "https://registry.npmjs.org/cldr-numbers-full/-/cldr-numbers-full-48.2.0.tgz",
+    "revision": "npm package cldr-numbers-full 48.2.0, built from unicode-org/cldr-json tag 48.2.0",
+    "fetched": "2026-10-27",
     "licence": "Unicode-3.0",
-    "size": 3518119,
-    "sha256": "d3d12515b0f6f7c4b5f82586b52b16164a0cffbf4d45a9f2bd894380a96b1cb3"
+    "size": 3518125,
+    "sha256": "2d17a1453c559a62112caeed52e0bcfe3cb8539c99d239ae7b7ed4d0827679d9"
   },
-  "cldr-core-48.0.0.tgz": {
-    "title": "Unicode CLDR 48.0.0 JSON, core supplemental data (parent locales, likely subtags, aliases)",
-    "url": "https://registry.npmjs.org/cldr-core/-/cldr-core-48.0.0.tgz",
-    "revision": "npm package cldr-core 48.0.0, built from unicode-org/cldr-json tag 48.0.0",
-    "fetched": "2026-10-25",
+  "cldr-core-48.2.0.tgz": {
+    "title": "Unicode CLDR 48.2.0 JSON, core supplemental data (parent locales, likely subtags, aliases)",
+    "url": "https://registry.npmjs.org/cldr-core/-/cldr-core-48.2.0.tgz",
+    "revision": "npm package cldr-core 48.2.0, built from unicode-org/cldr-json tag 48.2.0",
+    "fetched": "2026-10-27",
     "licence": "Unicode-3.0",
-    "size": 205069,
-    "sha256": "3b739a175e47e50905050a34612584fd5590c9352b11f36e3498eacff1c9aa94"
+    "size": 205098,
+    "sha256": "5310e0c7a06c1feb83dc8e54c8584bbe0b9c2ea8320172a18d541986b124585d"
   },
   "icu-78.3-number_grouping.cpp": {
     "title": "ICU4C number grouping source, release 78.3",

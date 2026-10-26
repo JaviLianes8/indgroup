@@ -51,12 +51,12 @@ def test_locales_lists_the_table() -> None:
 
 
 def test_version() -> None:
-    assert run("--version") == (0, f"indgroup {__version__} (CLDR 48.0.0)\n")
+    assert run("--version") == (0, f"indgroup {__version__} (CLDR 48.2.0)\n")
 
 
 def test_bad_values_and_locales_exit_with_status_two(capsys: pytest.CaptureFixture[str]) -> None:
     assert "not a plain number" in fails(capsys, "12,345")
-    assert "not a plain number" in fails(capsys, "1e99999")
+    assert "more than 100,000 digits" in fails(capsys, "1e100000")
     assert "no number data" in fails(capsys, "1", "-l", "xx")
     assert "not a validly grouped" in fails(capsys, "-p", "1,234,567")
     assert "must be one of" in fails(capsys, "1", "-g", "sometimes")

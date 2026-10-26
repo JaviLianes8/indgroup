@@ -96,7 +96,7 @@ def test_argument_errors_name_the_problem(capsys: pytest.CaptureFixture[str]) ->
     assert "20003 characters" in error_of(capsys, "--x" + LONG)
     assert "--locale" in error_of(capsys, "-l")
     assert "ambiguous" in error_of(capsys, "--loca", "de")
-    assert "not a plain number: '-.5'" in error_of(capsys, "-.5")
+    assert "not a plain number: '-1.2.3'" in error_of(capsys, "-1.2.3")
 
 
 def test_abbreviated_and_attached_options() -> None:
@@ -113,14 +113,14 @@ def test_help_and_version_print_to_stdout_and_exit_zero() -> None:
     for option in ("--locale", "--grouping", "--parse", "--locales", "--version"):
         assert option in out
     assert run("-h", "--nope") == (0, out)
-    assert run("--version") == (0, f"indgroup {__version__} (CLDR 48.0.0)\n")
+    assert run("--version") == (0, f"indgroup {__version__} (CLDR 48.2.0)\n")
 
 
 def test_locales_ends_with_a_newline() -> None:
     assert run("--locales") == (0, "\n".join(supported_locales()) + "\n")
 
 
-@pytest.mark.parametrize("value", ["12.", ".5", "1e", "1e12345", "0x10", "1_000", "+-1", ""])
+@pytest.mark.parametrize("value", ["1.2.3", ".", "1e", "e5", "0x10", "1_000", "+-1", ""])
 def test_values_must_be_plain_numbers(capsys: pytest.CaptureFixture[str], value: str) -> None:
     assert "not a plain number" in error_of(capsys, "--", value)
 

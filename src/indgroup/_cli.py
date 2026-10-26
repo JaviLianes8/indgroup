@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import NoReturn, TextIO, cast
 
 from ._args import HELP, Args, UsageError, read_args
+from ._bigint import to_decimal
 from ._digits import SPACE
 from ._locale import cldr_version, supported_locales
 from ._number import Grouping, format_number, parse_number
@@ -19,7 +20,10 @@ from ._value import shown
 __all__ = ["main"]
 
 _BOM = chr(0xFEFF)
-_PLAIN = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,4})?")
+# Decimal's finite spellings in ASCII. The exponent is matched whole and its value capped
+# below, so its length never matters: the 100,000-digit bound of the library decides.
+_PLAIN = re.compile(r"([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))(?:[eE]([+-]?)([0-9]+))?")
+_EXPONENT_CAP = "999999999"  # past any bound, and within what Decimal can hold
 
 
 def _utf8(stream: TextIO | None, encoding: str = "utf-8", errors: str = "strict") -> None:
@@ -46,11 +50,18 @@ def _read_values(stdin: TextIO) -> list[str]:
 def _convert(value: str, args: Args) -> str:
     if args.parse:
         number = parse_number(value, args.locale)
-        return format(Decimal(number), "f")  # str(int) stops at 4300 digits
-    plain = value.strip(SPACE)
-    if not _PLAIN.fullmatch(plain):
+        if isinstance(number, int):  # str(int) stops at 4300 digits and takes quadratic time
+            number = to_decimal(number)
+        return format(number, "f")
+    match = _PLAIN.fullmatch(value.strip(SPACE))
+    if match is None:
         raise ValueError(f"not a plain number: {shown(value)}")
-    return format_number(Decimal(plain), args.locale, grouping=cast(Grouping, args.grouping))
+    mantissa, sign, exponent = match.group(1, 2, 3)
+    exponent = (exponent or "0").lstrip("0") or "0"
+    if len(exponent) > len(_EXPONENT_CAP):
+        exponent = _EXPONENT_CAP
+    number = Decimal(f"{mantissa}e{sign or ''}{exponent}")
+    return format_number(number, args.locale, grouping=cast(Grouping, args.grouping))
 
 
 def _closed(error: OSError) -> bool:
