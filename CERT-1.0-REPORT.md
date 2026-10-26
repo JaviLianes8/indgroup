@@ -18,6 +18,7 @@ Progress:
 - [x] PR #3 and trace guard CLEAN
 - [x] QA round 1: five lenses reported, every finding fixed (see QA)
 - [x] QA round 2: five lenses re-checked round 1, every new finding fixed (see QA)
+- [x] QA round 3: lenses d and e re-checked round 2, every new finding fixed (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -298,6 +299,52 @@ Runs at f500369 (the fix commit):
   because its Node has ICU 78.2.
 - This PC, CPython 3.13.2 with Git's `sh` on the path: the four command-line test files,
   closed-stream cases included, pass.
+- Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0.
+
+### Round 3 (2026-10-26, at d73aa87)
+
+Lens d re-checked D4 and lens e re-checked N1 to N4 and its earlier mutants at d73aa87: all
+fixed, all killed. Lens d also ran the suite on CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2,
+3.14.2 and 3.14.2t (374 tests, no failure) and on the laptop with 3.14.6 from the wheel and
+the sdist, and found the wheel, the sdist and `twine check` clean. They reported four new
+findings, all fixed in bd3960c; none is disputed. The behaviour fix (d-D5) got its contract
+tests first: run against d73aa87 (the new test files with the old `src` on the path), 7 cases
+failed, and all pass after the fix. The tests for lens e's surviving mutants pin behaviour
+that d73aa87 already had, so they pass on it and were proven by the mutation run below.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| d-D5 | low | On a pipe, `main` switches `sys.stderr` to UTF-8 along with `sys.stdout`, keeping Python's `backslashreplace` handler, so an error quoting `é`, `€` or CJK text comes out as UTF-8 instead of the legacy code page or escapes. `test_cli_encoding` runs the command by subprocess with `PYTHONIOENCODING` removed and `PYTHONUTF8=0` (and the C locale outside Windows): values from stdin and, on Windows, from the arguments, quoted in errors as UTF-8 text; an in-process test pins the encoding and error handler each stream is left with. GUIDE, README, the docstring of `main` and the CHANGELOG say so |
+| e-E1 | medium | `test_cli_encoding::test_stdin_is_read_as_utf8_and_a_byte_order_mark_is_skipped` and `test_stdout_is_written_as_utf8`, in the same legacy environment: a value grouped with U+202F under `-p -l fr`, a line with a byte order mark, a line that is not UTF-8, and U+202F written by `-l fr` |
+| e-E2 | low | `test_cli_grammar::test_help_and_version_end_the_reading_in_their_long_form_too`: `--help --nope`, `--help --version` and `--version --help` |
+| e-E3 | low | `test_cli_grammar::test_an_option_value_is_taken_as_written`: `-l==de`, `-g==off`, `-l=` and `--locale=` followed by a value, `--locale=` alone, `-g=` and `--grouping=` followed by a value, and `--grouping`, `-g` and `--locale` with a padded value, each with its exact error line. GUIDE now states that an option's value is taken as written and that `--help` and `--version` end the reading. Behaviour unchanged |
+
+Mutation re-check, one mutant at a time in a copy of the tree, the whole suite with
+`INDGROUP_E2E=1` and `pytest -x` (doctests included), four at a time on Elena's PC, CPython
+3.14.2: lens e's six survivors and two against this round's fix. All 8 killed.
+
+| # | Mutation | First catcher |
+| --- | --- | --- |
+| Cn | stdin not switched to UTF-8 | `test_cli_encoding::test_stdin_is_read_as_utf8_and_a_byte_order_mark_is_skipped` |
+| D5 | stderr not switched to UTF-8 | `test_cli_encoding::test_errors_quote_a_value_read_from_stdin_as_utf8_text` |
+| D5b | stderr switched with the `strict` handler | `test_cli_encoding::test_the_process_streams_are_left_utf8_with_stderr_still_escaping` |
+| S17 | a long `--help` or `--version` does not end the reading | `test_cli_grammar::test_help_and_version_end_the_reading_in_their_long_form_too` |
+| S8 | a short option's value loses every leading `=` | `test_cli_grammar::test_an_option_value_is_taken_as_written` |
+| S15 | `--locale=` takes the next argument | `test_cli_grammar::test_an_option_value_is_taken_as_written` |
+| S31 | `-l=` takes the next argument | `test_cli_grammar::test_an_option_value_is_taken_as_written` |
+| S35 | a separate long option value is trimmed | `test_cli_grammar::test_an_option_value_is_taken_as_written` |
+
+Runs at bd3960c (the fix commit):
+
+- Elena's PC, CPython 3.14.2, a fresh clone with the fetched reference files,
+  `INDGROUP_E2E=1`: 399 passed, 7 skipped, exit 0 (the installed-wheel test included).
+  Skipped: the four closed-stream subprocess cases, which need a POSIX shell that PC does not
+  have, and the live Intl oracle, because its Node has ICU 78.2.
+- This PC, CPython 3.13.2 with Git's `sh` on the path: the four command-line test files and
+  `test_cli_encoding`, closed-stream cases included, pass. The interpreter matrix was not rerun
+  this round: the change is one more `reconfigure` call on a standard stream, which every
+  supported Python has.
 - Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
   `mypy --strict src tests` each exit 0.
 
