@@ -21,6 +21,7 @@ Progress:
 - [x] QA round 3: lenses d and e re-checked round 2, every new finding fixed (see QA)
 - [x] QA round 4: lens d re-checked round 3, its new finding fixed (see QA)
 - [x] Suite, gates, packages and matrix re-verified at b63f709 (see Matrix, packaging and gates)
+- [x] QA round 5: five fresh lenses at 9ef91df reported 13 findings, every one fixed in 3a01f33 (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -83,11 +84,14 @@ sha256 matched the manifest:
 
 | File | URL | sha256 |
 | --- | --- | --- |
-| CLDR 48.0.0 numbers | https://registry.npmjs.org/cldr-numbers-full/-/cldr-numbers-full-48.0.0.tgz | d3d12515b0f6f7c4b5f82586b52b16164a0cffbf4d45a9f2bd894380a96b1cb3 |
-| CLDR 48.0.0 core | https://registry.npmjs.org/cldr-core/-/cldr-core-48.0.0.tgz | 3b739a175e47e50905050a34612584fd5590c9352b11f36e3498eacff1c9aa94 |
+| CLDR 48.2.0 numbers | https://registry.npmjs.org/cldr-numbers-full/-/cldr-numbers-full-48.2.0.tgz | 2d17a1453c559a62112caeed52e0bcfe3cb8539c99d239ae7b7ed4d0827679d9 |
+| CLDR 48.2.0 core | https://registry.npmjs.org/cldr-core/-/cldr-core-48.2.0.tgz | 5310e0c7a06c1feb83dc8e54c8584bbe0b9c2ea8320172a18d541986b124585d |
 | ICU 78.3 grouper | https://raw.githubusercontent.com/unicode-org/icu/release-78.3/icu4c/source/i18n/number_grouping.cpp | 6e7fc28bd2b6a365bffcad868f9618d6537b2b266b30830ef367e56f0f83a9bc |
 | UTS #35 Numbers, rev. 76 | https://www.unicode.org/reports/tr35/tr35-76/tr35-numbers.html | be7b81e517dcbc9185aa131132254c2745aec7adec898d12d303187ad31e65b6 |
 
+- The two CLDR rows were 48.0.0 until QA round 5, which moved the table to 48.2.0 (fetched
+  2026-10-27; npm published it on 2026-03-18). Derived from both releases, the tables differ
+  in exactly one fact, the `fr-CH` group symbol (U+202F in 48.0.0, `'` in 48.2.0).
 - The shipped table `src/indgroup/_cldr.json` is rebuilt from the two CLDR packages by
   `scripts/build_table.py` inside the suite and must equal the shipped file; every locale is
   then checked symbol by symbol against the CLDR JSON.
@@ -96,8 +100,9 @@ sha256 matched the manifest:
 - Independent oracle, recorded: `node scripts/intl_reference.mjs` with Node 24.18.0
   (ICU 78.3, CLDR 48.0, Unicode 17.0) writes 72,036 `Intl.NumberFormat` cases (every
   locale, four groupings, Latin digits). Re-run on 2026-10-25, the output was byte for
-  byte the manifest hash `3bdad111b1e70cba476c92e96412b9177f957b75df8daef9cba874478ef54b62`. All cases match except the documented
-  Swiss French group symbol, where ICU's own data differs from the CLDR JSON.
+  byte the manifest hash `3bdad111b1e70cba476c92e96412b9177f957b75df8daef9cba874478ef54b62`. Since the table moved to CLDR 48.2.0
+  in QA round 5, every case matches, Swiss French included: ICU 78.3's `fr_CH.txt`
+  (tag `release-78.3`, fetched 2026-10-27) has `group{"'"}`, as CLDR 48.2.0 has.
 - Independent oracle, live: `tests/test_oracle_intl.py` sends 6,000 random cases per seed
   (three seeds) to `scripts/intl_oracle.mjs` in the same test run and compares, then
   parses every Intl output back.
@@ -413,6 +418,73 @@ Runs at 406d1ba (the fix commit):
   stdout version still gives 1.
 - Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
   `mypy --strict src tests` each exit 0.
+
+### Round 5 (2026-10-27, at 9ef91df)
+
+Five fresh lenses (a to e, same lenses as round 1) re-ran the bar at 9ef91df and reported 13
+findings: a: 3, b: 3, c: 1, d: 1, e: 5. Lens a's F1 and lens d's D1 are the same defect. None
+is disputed. All are fixed in 3a01f33. The contract tests came first. Run against the
+sources of 9ef91df, the final `test_locale_aliases`, `test_cli_values`, `test_messages` and
+`test_locale` give 47 failures and 90 passes; the passes include lens e's contracts, which pin
+behaviour 9ef91df already had and fail only on its mutants (table below). The growth contract
+of `test_conversions` measured ratios of 49 to 62 against its bound of 36 on 9ef91df (a copy
+of the test without the import of the new module). All of them pass after the fix, where the
+same ratios are 13 to 25.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| a-F1, d-D1 | low | The command line takes every finite plain spelling of a number in ASCII: `.5`, `-.5`, `5.`, `+.25` and exponents of any length. The exponent is capped at nine digits before it reaches `Decimal`, so the library's 100,000-digit bound decides and gives its own error: `1e99999` prints 100,000 digits, `1e100000` and `1e` followed by 100,000 nines are `more than 100,000 digits`, and `0e99999999999999999999` prints `0`. `1,234`, `1_000`, `0x10`, `Infinity`, full-width and Arabic-Indic digits are still not plain numbers. `--help`, README and GUIDE state the grammar. Tests: `test_cli_values` (formats, bound, refusals, a 2-million-digit exponent read in under a second); `test_cli` and `test_cli_args` updated where they pinned the old refusals |
+| a-F2 | low | GUIDE (tag rules and Errors table) and the `resolve_locale` docstring list every `ValueError` case, the extended language subtag included, and say that subtags after the script or region are read as variants without a grammar check, so `en-Latn-abc` reads `en` like `en-US-abcd`. Tests: `test_locale_aliases::test_other_extended_language_subtags_are_value_errors` and `test_a_three_letter_subtag_after_the_script_is_an_unchecked_variant` |
+| a-F3 | low | The package docstring and the README API table say the separator is one character other than a digit, a sign or `.` |
+| b-F1 | medium | The table is rebuilt from CLDR 48.2.0 (`cldr-numbers-full` and `cldr-core` from npm, sha256 in Ground truth). Derived by the same script, 48.0.0 and 48.2.0 differ in one fact, the `fr-CH` group symbol. `fr-CH` now writes and reads `1'234'567,89`, so the recorded Intl reference and the live oracle match on every compared case with no exception list (`KNOWN_ICU_DIFFERENCES` is gone). `cldr_version()` is `48.2.0`; README, GUIDE, CHANGELOG and the manifest say so. Tests: `test_locale::test_swiss_french_groups_with_an_apostrophe_since_cldr_48_2`, `test_intl` (now with `fr-CH` among its probes and parsed back), `test_sources` against the 48.2.0 files |
+| b-F2 | low | The table carries CLDR's 65 language aliases of several subtags (`tags`), and the new `_tag` module applies them as UTS #35 does: a rule matches when its first subtag is the language (`und` for any) and its other subtags stand before the first extension; the replacement's script and region fill only what the tag leaves empty. `zh-yue-HK` reads `yue`, `zh-cmn-Hant` `zh-Hant`, `no-bok` `nb`, `i-lux` `lb`, `art-lojban` `jbo`, `i-default` `en`, `sv-aaland` `sv-AX`, `sv-FI-aaland` `sv-FI`, `i-enochian` `und`. An alias whose replacement has no data raises `LookupError`: `hy-arevmda`, `zh-hakka`, `zh-xiang`, `zh-min-nan`, `i-klingon`, `sgn-BR`, `sgn-BE-FR`. Tests: `test_locale_aliases` (three tests) |
+| b-F3 | low | A tag without a script reads what its full form reads. The table now holds the likely script of every language and region where it differs (373 entries, 6 more), not only for languages with locales in several scripts, and the lookup no longer turns a root result into the language. `ku-GE`, `ku-AM`, `ku-AZ`, `ku-TM`, `ky-CN`, `ky-TR`, `tg-PK`, `ug-KZ`, `ug-MN` and `lzz-GE` read `und`, like their full forms; the last three were found by the wider table. README (Intl comparison) and GUIDE state it. Tests: `test_locale_aliases::test_a_tag_reads_what_its_likely_script_reads_even_without_data` (10 cases, resolution and output); `test_locale_rules` no longer pins `ku-GE` as `ku` |
+| c-F1 | medium | New `_bigint` module: `to_int` splits the digits' `Decimal` by powers of 256 with exact `Decimal` division, and `to_decimal` joins the int's bytes with exact `Decimal` multiplication, both in a fresh context at `MAX_PREC`, with pieces of 800 bytes left to Python. `read_number`, `split_value` and `--parse` use them. On this PC (CPython 3.13.2), 100,000 digits now take 0.069 s to parse and 0.032 s to format, against 0.19 s and 0.10 s. The README and GUIDE claims match those figures. Tests: `test_conversions` (growth from 12,500 to 100,000 digits under 36 times for five public paths and the CLI, the largest values under a second each, exactness at the piece edges, the 4,300-digit limit and powers of 2 and 10) |
+| e-F1 | medium | `test_locale_aliases::test_the_region_of_the_tag_wins_over_the_region_of_an_alias`: `swc-KE` is `sw-KE` (`-1,234,567.5`), `swc` is `sw-CD`, `prs-IR` is `fa`, `cnr-BA` is `sr-Cyrl-BA`, `cnr` is `sr-Latn-ME`, resolution and output |
+| e-F2 | medium | `test_locale_aliases::test_a_bad_subtag_late_in_the_tag_is_a_value_error`: a bad subtag in the fourth or fifth position, after a variant, after `-x-`, and an empty trailing subtag, through `resolve_locale` and `format_number` |
+| e-F3 | low | `test_locale_aliases::test_an_explicit_script_wins_over_a_posix_modifier` (`uz-Arab@latin`, `sr-Cyrl@latin`, `hi-Latn@devanagari`); GUIDE states the rule |
+| e-F4 | low | `test_messages`: exactly 40 characters are quoted whole and 41 are cut with `... (41 characters)`, for `parse_indian`, `parse_number`, `resolve_locale` and `number_symbols`; the count is of characters, not bytes |
+| e-F5 | low | `test_messages`: the message names NaN for float NaN, negative NaN, `Decimal("NaN")` and `Decimal("sNaN")`, and an infinity for both float and both `Decimal` infinities, through both formatters |
+
+Mutation check of the fixes, one mutant at a time on this PC (CPython 3.13.2, bytecode
+writing off), running the new and changed test files with `-x`. The five survivors of lens e
+are now killed, and so are 13 mutants of the new code. Two of those 13 (an `und` replacement
+and a tag's script against a replacement's) survived at first and gained the contract
+`test_a_replacement_of_und_names_the_root_and_the_tag_keeps_its_fields`.
+
+| Mutant | First catcher |
+| --- | --- |
+| e-F1: `region = region or extra` to `region = extra` | `test_locale_aliases::test_the_region_of_the_tag_wins_over_the_region_of_an_alias[swc-KE...]` |
+| e-F2: subtag check on `subtags[:3]` only | `test_locale_aliases::test_a_bad_subtag_late_in_the_tag_is_a_value_error[en-Latn-US-abcdefghi]` |
+| e-F3: the modifier wins over the tag's script | `test_locale_aliases::test_an_explicit_script_wins_over_a_posix_modifier[uz-Arab@latin...]` |
+| e-F4: `len(text) <= _SHOWN` to `<` | `test_messages::test_an_input_of_forty_characters_is_quoted_whole[parse_indian...]` |
+| e-F5: NaN called an infinity | `test_messages::test_nan_is_named_in_the_message[nan0]` |
+| an `und` replacement keeps the tag's first subtag | `test_locale_aliases::test_a_replacement_of_und_names_the_root_and_the_tag_keeps_its_fields` |
+| the replacement's region overrides the tag's | `test_locale_aliases::test_aliases_of_several_subtags_read_their_replacement[sv-FI-aaland-sv-FI]` |
+| the replacement's script overrides the tag's | `test_locale_aliases::test_a_replacement_of_und_names_the_root_and_the_tag_keeps_its_fields` |
+| `und` rules never tried | `test_locale_aliases::test_aliases_of_several_subtags_read_their_replacement[sv-aaland-sv-AX]` |
+| aliases matched inside extensions | `test_locale_aliases::test_an_alias_inside_an_extension_is_not_applied` |
+| exponent cap removed | `test_cli_values::test_every_plain_decimal_spelling_formats[argv6-...]` |
+| `.5` and `5.` refused again | `test_cli_values::test_every_plain_decimal_spelling_formats[argv0-...]` |
+| a root result of the likely script turned into the language | `test_locale_aliases::test_a_tag_reads_what_its_likely_script_reads_even_without_data[ku-GE...]` |
+| `to_int` halves swapped | `test_conversions::test_conversions_are_exact_at_every_size[1927]` |
+| `to_decimal` drops a byte | `test_conversions::test_conversions_are_exact_at_every_size[1927]` |
+| `to_decimal` negates in the caller's context | `test_conversions::test_long_integers_cost_far_less_than_quadratic_time[format_number]` |
+| `split_value` back to `Decimal(value)` | `test_conversions::test_long_integers_cost_far_less_than_quadratic_time[format_indian]` |
+| `read_number` back to `int(Decimal(digits))` | `test_conversions::test_long_integers_cost_far_less_than_quadratic_time[parse_indian grouped]` |
+
+Runs at 3a01f33 (the fix commit), on this PC:
+
+- CPython 3.13.2, the tree with the fetched reference files (CLDR 48.2.0 in place of
+  48.0.0) and Node 24.18.0 for the live oracle: 538 passed, 1 skipped (the opt-in
+  installed-wheel test), doctests included.
+- Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0. No source file is over 200 lines.
+- CPython 3.11.5: a probe of the new behaviour (aliases, likely scripts, a 100,000-digit
+  round trip, the CLI grammar) passes. The interpreter matrix was not rerun: every machine
+  stayed busy with other work for this session (`recurso.sh ver`), so it is left to lens
+  d's re-check. The new code uses only what 3.10 has (`int.to_bytes` with a positional byte
+  order, `decimal.MAX_PREC`, builtin generics at run time).
 
 ### Disputed findings
 
