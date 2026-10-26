@@ -348,6 +348,36 @@ Runs at bd3960c (the fix commit):
 - Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
   `mypy --strict src tests` each exit 0.
 
+### Round 4 (2026-10-26, at 60bbdaa)
+
+Lens d re-checked D5 at 60bbdaa: fixed. With `PYTHONIOENCODING`, `PYTHONUTF8` and
+`PYTHONLEGACYWINDOWSSTDIO` removed, a fresh wheel venv on CPython 3.10.19, 3.11.5, 3.12.12,
+3.13.2, 3.14.2 and 3.14.2t and an sdist venv on 3.13.2 all print the error line for `-é`,
+`1x€` and CJK text as UTF-8 with status 2, while a wheel built from d73aa87 still gives the
+legacy bytes. The installed suite (393 passed, 3 skipped) and the doctests pass on all six,
+`twine check --strict` passes, and the wheel and sdist contents are clean. Of 29 robustness
+probes, one found a new defect, fixed in 406d1ba; none is disputed. Its contract tests came
+first: against 60bbdaa they failed (status 120 in four subprocess cases, a raised
+`BrokenPipeError` in process), and all pass after the fix.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| d-D5 | low | Confirmed fixed; nothing to change |
+| d-D6 | low | When the reader of stderr had closed it, the error line could not be flushed and Python turned that into status 120 at exit, not the documented 2. `_fail` now writes the line through the same helper as stdout: on a closed pipe it points file descriptor 2 at the null device and the status stays 2. `test_cli_streams::test_a_stderr_reader_gone_before_the_error_still_gives_status_two` runs four failing commands (unknown locale, unknown option, a bad value and stdin that is not UTF-8) with the read end of stderr closed before they start; `test_a_closed_stderr_in_process_still_exits_with_status_two` covers a stderr whose write raises `BrokenPipeError`; `test_a_closed_standard_stream_gives_no_traceback` gains `2>&-`. GUIDE and CHANGELOG say so |
+
+Runs at 406d1ba (the fix commit):
+
+- Elena's PC, CPython 3.14.2, the tree with the fetched reference files, `INDGROUP_E2E=1`:
+  402 passed, 10 skipped, no failure (the installed-wheel test included). Skipped: the five
+  closed-stream shell cases, which need a POSIX shell that PC does not have, the two tree
+  checks, which need a git checkout, and the live Intl oracle, because its Node has ICU 78.2.
+- This PC, CPython 3.13.2 with Git's `sh` on the path: `test_cli_streams`, `test_cli_encoding`,
+  `test_docs` and `test_contract` pass, closed-stream and tree cases included. The reviewer's
+  repro now gives 2 three times out of three, in the shell pipeline and with `Popen`, and the
+  stdout version still gives 1.
+- Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0.
+
 ### Disputed findings
 
 None.
