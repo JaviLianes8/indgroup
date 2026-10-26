@@ -3,9 +3,9 @@
 [![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)](https://lianes8studio.com/certified)
 
 Format and strictly parse numbers with Indian lakh and crore grouping (`12,34,567`) and the
-digit grouping of every Unicode CLDR locale: `1.234.567,89` in German, `1'234'567.89` in
-Swiss German, a narrow no-break space in French, `1234` but `12.345` in Spanish. Exact for
-`int`, `float` and `Decimal`, typed, zero dependencies.
+digit grouping of the 766 Unicode CLDR locales with number data: `1.234.567,89` in German,
+`1'234'567.89` in Swiss German, a narrow no-break space in French, `1234` but `12.345` in
+Spanish. Exact for `int`, `float` and `Decimal`, typed, zero dependencies.
 
 ## Install
 
@@ -71,11 +71,15 @@ with more than 100,000 digits before or after the point are refused with `ValueE
 (converting between `int` and `Decimal` takes quadratic time, so longer values would hang).
 
 Parsing is strict. It takes the locale's own minus, decimal and group symbols, ASCII digits
-only, and groups exactly where the locale writes them, or none at all. A value without a
+only, and groups exactly where the locale writes them, or none at all; a grouped number never
+starts with a zero group, so `0,001` is refused rather than read as `1`. A value without a
 fraction comes back as `int`, one with a fraction as a `Decimal` with every digit kept, so
-formatting the result gives the same text again; the one exception is `-0`, which reads back
-as the `int` `0`. Surrounding spaces, tabs and line breaks are ignored, but a group symbol is
-never taken for one, even when it is a no-break space.
+text written by `format_number` reads back to a value that formats to the same text; the one
+exception is `-0`, which reads back as the `int` `0`. The parser also takes spellings the
+formatter does not write, which format back to the locale's own spelling: digits without
+groups, groups the minimum grouping digits leave out (Spanish `1.234`), leading zeros in
+ungrouped digits (`007`) and surrounding spaces, tabs and line breaks. A group symbol is never
+taken for a space, even when it is a no-break space.
 
 ```python
 from indgroup import number_symbols, parse_number, resolve_locale
@@ -111,9 +115,9 @@ $ indgroup --parse 12,34,567.50
 
 Values come from the arguments or from stdin, one per line. `-l/--locale` picks the locale
 (default `en-IN`), `-g/--grouping` the strategy, `-p/--parse` reads grouped values back,
-`--locales` lists the locales. Put `--` before a negative value other than plain digits,
-such as `-1e5` or `-1.234,5`.
-Errors exit with status 2.
+`--locales` lists the locales. An argument that starts with a minus followed by a digit or a
+point, such as `-1e5` or `-1.234,5`, is a value on every Python version; put `--` before any
+other value that starts with a minus. Errors print one line on stderr and exit with status 2.
 
 ## API
 
@@ -134,18 +138,28 @@ Errors exit with status 2.
 Wrong types raise `TypeError`; NaN, infinities, unknown grouping values, malformed text and
 values past the digit bound raise `ValueError`; an unknown language raises `LookupError`
 instead of silently reading English. Error messages quote at most 40 characters of the
-input. The [GUIDE](https://github.com/JaviLianes8/indgroup/blob/main/GUIDE.md) covers every
+input; a longer input is cut and its length given. The [GUIDE](https://github.com/JaviLianes8/indgroup/blob/main/GUIDE.md) covers every
 rule in detail and the
 [CHANGELOG](https://github.com/JaviLianes8/indgroup/blob/main/CHANGELOG.md) what changed in
 each release.
 
 ## How it compares with `Intl.NumberFormat`
 
-The 650 locales ICU ships, the four grouping strategies and a set of integers and decimals
-are checked against `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48) with Latin digits.
+The 637 CLDR locales that ICU ships under their own name, 13 alias and fallback tags such as
+`iw` and `de-AT-1996`, the four grouping strategies and a set of integers and decimals are
+checked against `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48) with Latin digits.
 They agree everywhere except Swiss French, where the ICU data writes an apostrophe while
 CLDR 48 gives `fr-CH` no group symbol of its own, so it inherits the narrow no-break space
-of `fr`. This library follows CLDR. Other differences are by design:
+of `fr`. This library follows CLDR, here and in two more places Intl does not:
+
+- A tag in a script other than its language's likely one, such as `ru-Latn` or `hi-Arab`,
+  reads the root locale, as CLDR's `nonlikelyScript` parent rule says; Intl reads `ru` and
+  `hi`.
+- The table holds the 766 locales of the CLDR JSON packages. CLDR's XML has one more with
+  number data, `en_US_POSIX` (no grouping), which the JSON leaves out, so `en-US-POSIX`
+  reads `en` here while Intl writes `-1234567.5`.
+
+Other differences are by design:
 
 - Digits are always Latin (`0` to `9`); the native digits some locales default to, such as
   Arabic-Indic, are out of scope.

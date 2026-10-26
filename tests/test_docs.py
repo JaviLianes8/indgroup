@@ -35,7 +35,7 @@ def _run_examples(name: str) -> tuple[int, int]:
 
 def test_every_python_example_prints_its_comments() -> None:
     assert _run_examples("README.md") == (3, 21)
-    assert _run_examples("GUIDE.md") == (4, 27)
+    assert _run_examples("GUIDE.md") == (4, 28)
 
 
 def test_every_shell_example_prints_its_output() -> None:

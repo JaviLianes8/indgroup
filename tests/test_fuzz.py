@@ -26,13 +26,15 @@ def _digits(text: str) -> bool:
 
 def _integer(text: str, group: str, primary: int, secondary: int) -> str | None:
     """The digits of an integer part written plain or grouped exactly; written from the
-    README rule (group sizes counted from the right), not from the library's regex."""
+    GUIDE rule (group sizes counted from the right), not from the library's regex."""
     if _digits(text):
         return text
     chunks = text.split(group)
     if primary == 0 or len(chunks) < 2 or not all(_digits(chunk) for chunk in chunks):
         return None
     if len(chunks[-1]) != primary or not 1 <= len(chunks[0]) <= secondary:
+        return None
+    if chunks[0].startswith("0"):  # the formatter never writes a leading zero group
         return None
     if any(len(chunk) != secondary for chunk in chunks[1:-1]):
         return None
