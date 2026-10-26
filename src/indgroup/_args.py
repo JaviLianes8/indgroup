@@ -7,6 +7,7 @@ its errors print a usage block and quote arguments whole.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from ._value import shown
@@ -81,41 +82,62 @@ def _set(args: Args, name: str, value: str) -> None:
         raise UsageError(f"--grouping must be one of {', '.join(GROUPINGS)}, not {shown(value)}")
 
 
+def _next(rest: Iterator[str], name: str) -> str:
+    for value in rest:
+        return value
+    raise UsageError(f"{name} needs a value")
+
+
+def _flag(args: Args, name: str) -> bool:
+    """Record a flag; True for ``--help`` and ``--version``, which end the reading."""
+    if name in ("--help", "--version"):
+        args.show = name.removeprefix("--")
+        return True
+    args.parse = args.parse or name == "--parse"
+    args.locales = args.locales or name == "--locales"
+    return False
+
+
+def _cluster(args: Args, arg: str, rest: Iterator[str]) -> bool:
+    """Read ``-pl de``, ``-plde`` or ``-l=de`` in one pass; True when the reading ends."""
+    for index in range(1, len(arg)):
+        letter = "-" + arg[index]
+        if index > 1 and letter not in _SHORT:
+            raise UsageError(f"unknown option {shown(letter)} in {shown(arg)}")
+        name = _option(letter, arg)
+        if name in ("--locale", "--grouping"):
+            attached = arg[index + 1 :]  # the only copy: the value ends the argument
+            value = attached.removeprefix("=") if attached else _next(rest, name)
+            _set(args, name, value)
+            return False
+        if arg[index + 1 : index + 2] == "=":  # one character, so a long cluster stays linear
+            raise UsageError(f"{name} takes no value: {shown(arg)}")
+        if _flag(args, name):
+            return True
+    return False
+
+
 def read_args(argv: list[str]) -> Args:
     """Read ``argv`` the way getopt-style tools do; raise ``UsageError`` when it cannot."""
     args = Args()
-    pending = argv[::-1]  # popped from the end, so a cluster such as -pl can push back -l
-    while pending:
-        arg = pending.pop()
+    rest = iter(argv)
+    for arg in rest:
         if arg == "--":
-            args.values.extend(reversed(pending))
+            args.values.extend(rest)
             break
         if arg == "-" or not arg.startswith("-") or _NEGATIVE.match(arg):
             args.values.append(arg)
             continue
-        if arg.startswith("--"):
-            text, attached, value = arg.partition("=")
-        else:  # "-lde", "-l=de", "-pl"
-            text, value = arg[:2], arg[2:]
-            attached = value[:1]
-            value = value.removeprefix("=")
+        if not arg.startswith("--"):
+            if _cluster(args, arg, rest):
+                return args
+            continue
+        text, attached, value = arg.partition("=")
         name = _option(text, arg)
         if name in ("--locale", "--grouping"):
-            if not attached:
-                if not pending:
-                    raise UsageError(f"{name} needs a value")
-                value = pending.pop()
-            _set(args, name, value)
-        elif attached and text.startswith("--"):
-            raise UsageError(f"{name} takes no value: {shown(arg)}")
+            _set(args, name, value if attached else _next(rest, name))
         elif attached:
-            if "-" + value[:1] not in _SHORT:
-                raise UsageError(f"unknown option {shown('-' + value[:1])} in {shown(arg)}")
-            pending.append("-" + value)
-            attached = ""
-        if name in ("--help", "--version"):
-            args.show = name.removeprefix("--")
+            raise UsageError(f"{name} takes no value: {shown(arg)}")
+        elif _flag(args, name):
             return args
-        args.parse = args.parse or name == "--parse"
-        args.locales = args.locales or name == "--locales"
     return args

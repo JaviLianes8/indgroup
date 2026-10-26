@@ -84,7 +84,8 @@ sign, and for Persian a left-to-right mark before it.
   `-u-nu-arab` and private use (`-x-...`) do not change anything.
 - `und` and `root` are the root locale. An unknown language raises `LookupError` rather than
   reading another language's data; text that is not a tag raises `ValueError`, including a
-  four-letter or longer than eight-letter subtag.
+  four-letter language subtag or any subtag longer than eight characters. Subtags after the
+  region are not checked against BCP 47's variant grammar: `en-US-abcd` reads `en`.
 
 `supported_locales()` lists the 766 locales of the CLDR 48 JSON packages, every one with
 number data, and `cldr_version()` the CLDR release, `48.0.0`. CLDR's XML has one more locale
@@ -214,7 +215,9 @@ An argument that starts with a minus followed by a digit or a point (`-1e5`, `-1
 is a value, the same on every Python version; put `--` before any other value that starts
 with a minus. Errors, argument errors included, print one line on stderr, quoting at most
 40 characters of an argument, and exit with status 2. When the reader of stdout closes it
-early, as `indgroup < values.txt | head -1` does, the command stops quietly with status 1.
+early, as `indgroup < values.txt | head -1` does, the command stops quietly with status 1, and
+the same when it starts with stdout closed (`indgroup 5 >&-`). Started with stdin closed and
+no VALUE arguments, it reports that there are no values, with status 2.
 
 ## Data and its sources
 
@@ -226,4 +229,8 @@ reference covers the 637 CLDR locales that ICU ships under their own name and 13
 fallback tags (such as `iw`, `en-UK` and `de-AT-1996`) in four groupings, and a live run
 compares random values. They agree everywhere except `fr-CH`, where ICU's data writes an
 apostrophe and CLDR 48 inherits the narrow no-break space of `fr`; this library follows CLDR,
-as it does for the `nonlikelyScript` rule, which Intl does not apply.
+as it does for the `nonlikelyScript` rule, which Intl does not apply. A tag that spells out
+its language's likely script, such as `de-Latn-AT`, reads `de-AT` here, as UTS #35 says the
+lookup starts without that script; Intl drops the region and reads `de`. One difference goes
+the other way: Intl follows CLDR's XML, which gives `en_US_POSIX` number data of its own, while
+this table comes from the CLDR JSON packages, which leave it out, so `en-US-POSIX` reads `en`.

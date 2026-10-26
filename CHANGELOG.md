@@ -48,7 +48,9 @@ needs a new major version.
   option unless `--` came first, and 3.14 did not. Every error, argument errors included,
   prints one line on stderr (no usage block) quoting at most 40 characters of an argument,
   and still exits with status 2. `--help` and `--version` print to the stream given to
-  `main` and return 0.
+  `main` and return 0. Short options may be clustered (`-pl de`, `-plde`, `-l=de`), in time
+  linear in the length of the argument, and a flag given a value (`-p=x`, `--parse=x`) is an
+  error that names the flag.
 - The command line trims only spaces, tabs and line breaks around a value read from stdin,
   as the parsers do: a no-break space or other Unicode space at either end of a line is part
   of the value, so a stray group symbol is refused instead of dropped. Arguments are trimmed
@@ -62,6 +64,11 @@ needs a new major version.
 - `python -m indgroup` no longer runs the command when the module is merely imported.
 - When the reader of its output closes the pipe early (`indgroup < values.txt | head -1`),
   the command stops quietly with status 1 instead of printing a `BrokenPipeError` traceback.
+- Started without a stdout, stdin or stderr (closed with `>&-` or `<&-`, or by a parent that
+  passes no standard handles), the command printed an `AttributeError` traceback. Without
+  stdout it now stops quietly with status 1, as when its reader leaves; without stdin and
+  VALUE arguments it reports that there are no values; without stderr an error still exits
+  with status 2.
 
 ### Added
 

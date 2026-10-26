@@ -150,14 +150,19 @@ The 637 CLDR locales that ICU ships under their own name, 13 alias and fallback 
 checked against `Intl.NumberFormat` of Node 24.18 (ICU 78.3, CLDR 48) with Latin digits.
 They agree everywhere except Swiss French, where the ICU data writes an apostrophe while
 CLDR 48 gives `fr-CH` no group symbol of its own, so it inherits the narrow no-break space
-of `fr`. This library follows CLDR, here and in two more places Intl does not:
+of `fr`. This library follows CLDR there, and in two more places where Intl does not:
 
 - A tag in a script other than its language's likely one, such as `ru-Latn` or `hi-Arab`,
   reads the root locale, as CLDR's `nonlikelyScript` parent rule says; Intl reads `ru` and
   `hi`.
-- The table holds the 766 locales of the CLDR JSON packages. CLDR's XML has one more with
-  number data, `en_US_POSIX` (no grouping), which the JSON leaves out, so `en-US-POSIX`
-  reads `en` here while Intl writes `-1234567.5`.
+- A tag that spells out its language's likely script, such as `de-Latn-AT` or `en-Latn-IN`,
+  reads `de-AT` and `en-IN`, as UTS #35 says the lookup starts without that script; Intl
+  drops the region and reads `de` and `en`, so `de-Latn-AT` writes `-1.234.567,5` there.
+
+One difference goes the other way, where Intl follows CLDR and this library does not. The
+table holds the 766 locales of the CLDR JSON packages. CLDR's XML has one more with number
+data, `en_US_POSIX` (no grouping), which the JSON leaves out, so `en-US-POSIX` reads `en`
+here while Intl writes `-1234567.5`.
 
 Other differences are by design:
 

@@ -17,6 +17,7 @@ Progress:
 - [x] Gates (item 15)
 - [x] PR #3 and trace guard CLEAN
 - [x] QA round 1: five lenses reported, every finding fixed (see QA)
+- [x] QA round 2: five lenses re-checked round 1, every new finding fixed (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -237,6 +238,66 @@ Runs at 1f26d23 (the fix commit):
   included).
 - This PC, one venv per interpreter, Node 24.18.0 on the path: 348 passed and 1 skipped
   (the installed-wheel test) on 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t.
+- Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0.
+
+### Round 2 (2026-10-26, at 910f764)
+
+The five lenses re-checked every round 1 finding at 910f764 and found each one fixed (lens a:
+A1 to A6, lens b: F1 to F5, lens c: C1 to C3, lens d: D1 to D3, lens e: F1 to F7 and its 15
+earlier mutants, all killed). They reported ten new findings, two of them the same defect seen
+by two lenses. Every one is fixed; none is disputed. Behaviour fixes got a contract test first:
+run against 910f764 (the new test files with the old `src` on the path), 12 cases failed (the
+long cluster, every missing or closed standard stream, and the message for `-p=x`), and all pass
+after the fix. The tests for lens e's surviving mutants pin behaviour that 910f764 already had,
+so they pass on it and were proven by the mutation run below instead.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| a-A7 | low | GUIDE: text that is not a tag raises `ValueError` for a four-letter language subtag or any subtag longer than eight characters; subtags after the region are not held to BCP 47's variant grammar (`en-US-abcd` reads `en`), pinned by `test_locale_rules::test_subtags_after_the_region_are_not_held_to_the_variant_grammar`. Behaviour unchanged |
+| b-N1 | low | README and GUIDE list the difference with Intl for a tag that spells out its language's likely script (`de-Latn-AT` reads `de-AT` here, as UTS #35 says; Intl reads `de`), re-checked on Node 24.18 (ICU 78.3): `-1.234.567,5` from Intl against `-1`, `234`, `567,5` joined by no-break spaces here. The `en_US_POSIX` difference now reads as the one place where Intl follows CLDR (its XML) and this library, built from the JSON packages, does not |
+| c-N1 | low | A short-option cluster is read letter by letter with an index and copies the rest of the argument only once, for an option that takes it as its value: 400,000 flags in one argument cost about what 400,000 separate ones do (`test_cli_grammar::test_a_long_option_cluster_is_read_in_linear_time`, CPU time; before the fix the cluster took 1.83 s on this PC and the separate flags 0.28 s) |
+| c-N2, d-D4 | low | Started without stdout, the command stops quietly with status 1, as when its reader leaves (exit 0 when there is nothing to write); without stdin and VALUE arguments it reports that there are no values, status 2; without stderr an error still exits with status 2. In-process tests with each stream set to `None`, and subprocess tests with `>&-` and `<&-` |
+| e-N1 | medium | `test_cli_streams::test_a_reader_gone_before_the_first_write_gets_no_traceback`: one VALUE argument, `--locales`, `--version` and one stdin line, with the read end of the pipe closed before the command starts: status 1 and an empty stderr |
+| e-N2 | medium | `test_cli_streams::test_other_write_errors_are_raised_not_taken_for_a_closed_pipe`: `EIO` and `ENOSPC` propagate as `OSError` |
+| e-N3 | medium | `test_cli_grammar::test_values_after_a_double_dash_keep_their_order`: several values after `--`, negative ones and a second `--` included |
+| e-N4 | low | `test_cli_grammar`: three-character prefixes (`--p`, `--v`, `--h`), a bad `-g` with `-p`, with `--locales` and in `-pg`, `-l=de`, `-g=off`, `-pl=de`, `--parse=l`, `-p=x`, `--locales` followed by other flags, and a lone `-`, which is a value |
+
+Other changes made with these fixes, each in the CHANGELOG: a flag given a value inside a
+cluster (`-p=x`) is refused with a message that names the flag, as `--parse=x` already was.
+
+Mutation re-check, one mutant at a time in a copy of the tree, `pytest -x` (doctests included)
+on Elena's PC, CPython 3.14.2: the 10 surviving mutants of lens e, rewritten for the new
+reader where its code moved, plus 7 against this round's fixes. All 17 killed.
+
+| # | Mutation | First catcher |
+| --- | --- | --- |
+| C10 | closed pipe: buffer not sent to the null device | `test_cli_streams::test_a_reader_gone_before_the_first_write_gets_no_traceback` |
+| C11 | closed pipe: write not flushed | `test_cli_streams::test_a_reader_gone_before_the_first_write_gets_no_traceback` |
+| C7 | every write error taken for a closed pipe | `test_cli_streams::test_other_write_errors_are_raised_not_taken_for_a_closed_pipe[5]` |
+| A2 | values after `--` reversed | `test_cli_grammar::test_values_after_a_double_dash_keep_their_order` |
+| A3 | three-character prefixes refused | `test_cli_grammar::test_any_unique_prefix_of_three_characters_names_an_option` |
+| A6 | any grouping accepted | `test_cli_grammar::test_a_bad_grouping_is_refused_whatever_else_is_asked` |
+| A7 | `-l=de` keeps the equals sign | `test_cli_grammar::test_a_short_option_takes_its_value_after_an_equals_sign` |
+| A9 | `--parse=x` accepted | `test_cli_args::test_argument_errors_are_one_short_line` |
+| A13 | a later flag clears `--locales` | `test_cli_grammar::test_locales_wins_over_other_flags_in_any_order` |
+| A14 | a lone `-` is an option | `test_cli_grammar::test_a_lone_dash_is_a_value` |
+| S1 | missing stdout reported as success | `test_cli_streams::test_a_missing_stdout_stops_quietly_with_status_one` |
+| S2 | missing stdin not handled | `test_cli_streams::test_a_missing_stdin_is_no_input` |
+| S3 | missing stderr not handled | `test_cli_streams::test_a_missing_stderr_still_exits_with_status_two` |
+| A9b | `-p=x` accepted | `test_cli_grammar::test_flags_take_no_value` |
+| Q1 | a cluster copies its rest for every letter | `test_cli_grammar::test_a_long_option_cluster_is_read_in_linear_time` |
+| Q2 | an unknown letter inside a cluster not named | `test_cli_grammar::test_flags_take_no_value` |
+| H1 | `-h` inside a cluster does not end the reading | `test_cli_args::test_help_and_version_print_to_stdout_and_exit_zero` |
+
+Runs on the fix:
+
+- Elena's PC, CPython 3.14.2, the tree with the fetched reference files, `INDGROUP_E2E=1`:
+  377 passed, 7 skipped (the installed-wheel test included). Skipped: the four closed-stream
+  subprocess cases, which need a POSIX shell that PC does not have, and the live Intl oracle,
+  because its Node has ICU 78.2.
+- This PC, CPython 3.13.2 with Git's `sh` on the path: the four command-line test files,
+  closed-stream cases included, pass.
 - Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
   `mypy --strict src tests` each exit 0.
 

@@ -119,3 +119,9 @@ def test_subtags_of_the_wrong_length_are_value_errors(tag: str) -> None:
     with pytest.raises(ValueError) as raised:
         resolve_locale(tag)
     assert type(raised.value) is ValueError
+
+
+def test_subtags_after_the_region_are_not_held_to_the_variant_grammar() -> None:
+    # GUIDE: subtags after the region are not held to the variant grammar of BCP 47.
+    assert resolve_locale("en-US-abcd") == "en"
+    assert resolve_locale("de-AT-abcd") == "de-AT"
