@@ -16,6 +16,7 @@ Progress:
 - [x] Packaging, e2e, every Python (items 8, 10, 13, 14)
 - [x] Gates (item 15)
 - [x] PR #3 and trace guard CLEAN
+- [x] QA round 1: five lenses reported, every finding fixed (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -34,7 +35,7 @@ Progress:
 | 9 | Seeded fuzz, no crash, hang or blowup | PASS: three seeds over the formatters, the strict grammar of both parsers against an independent acceptor, and timed hostile shapes |
 | 10 | Supported Pythons | PASS: CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t (free-threaded); 3.8.20 and 3.9.25 are installed but below `requires-python`; no 3.13t is installed here |
 | 11 | README and `twine check` | PASS: `twine check --strict` on wheel and sdist, absolute links, README examples run as tests, the Babel facts re-checked against Babel 2.18.0 (10 MB wheel, CLDR 47, `format_decimal(1234, locale="es")` gives `1.234`, three fraction digits unless `decimal_quantization=False`) |
-| 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-10-25 |
+| 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-10-26; 0.2.0 and 0.1.0 dated from their merge commits |
 | 13 | pyproject 1.0.0, Production/Stable | PASS: classifiers for 3.10 to 3.14, `MIT AND Unicode-3.0`, both licence files, URLs, keywords, no runtime dependencies |
 | 14 | sdist and wheel contents | PASS: see Matrix, packaging and gates |
 | 15 | Gates each exit 0 | PASS: see Matrix, packaging and gates |
@@ -157,3 +158,88 @@ fetched reference files copied in and Node 24.18.0 on the path:
 - Sdist: sources, tests, scripts, README, GUIDE, CHANGELOG, CONTRIBUTING, both licences,
   `requirements-dev.txt` and `tests/upstream/MANIFEST.json`. The fetched third-party files,
   this report and the improvement notes are excluded.
+
+## QA
+
+### Round 1 (2026-10-26, at 593f945)
+
+Five independent lenses (a: API and docs, b: correctness and ground truth, c: adversarial,
+d: packaging and e2e, e: contract strength) reported 24 findings (lens c also sent an
+evidence note that is not a defect). Every one is fixed; none is disputed. Behaviour fixes
+got a contract test first: run against 593f945 (the new test files with the old `src` on the
+path), 56 of the new cases failed, and all pass after the fix.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| a-A1 | medium | README and GUIDE now promise what holds: text written by the formatters reads back to a value that formats to the same text, `-0` excepted; the non-canonical spellings the parser also takes are listed. Pinned by `test_parse_edges::test_text_written_by_the_formatters_reads_back_to_the_same_text` |
+| a-A2 | low | GUIDE: at run time `Number` is the union `int \| float \| Decimal` and `Grouping` a `typing.Literal` |
+| a-A3, c-C3, d-D3 | low | The command line no longer uses `argparse`: every error, argument errors included, is one line on stderr quoting at most 40 characters of an argument, status 2 (`test_cli_args::test_argument_errors_are_one_short_line`, 12 shapes including a 20,000-character `-g`, `--x...`, `--parse=...`, `-p...` and an ambiguous `--lo=...`) |
+| a-A4 | low | GUIDE and CHANGELOG: a longer input is cut and its length given |
+| a-A5 | low | CONTRIBUTING describes the real policy: pure unit tests, and the files that read the clock, the docs, git, Node or the reference files, or build a venv |
+| a-A6 | low | CHANGELOG: 0.2.0 dated 2026-10-14 (e5cecf8), 0.1.0 dated 2026-10-12 (6f813fe) with an `### Added` heading |
+| b-F1 | medium | `resolve_locale` applies CLDR's `nonlikelyScript` parent rule (UTS #35 rev. 76, fetched 2026-10-26): `ru-Latn`, `hi-Arab`, `de-Cyrl`, `fr-Arab` read `und`. The table now ships the likely script of all 350 languages. Where the likely script added for a region has no data (`ku-GE`), the plain chain is kept (`ku`), as before |
+| b-F2 | low | A grouped integer may not start with `0` (`0,001`, `01,234`, `00,01,234` refused); ungrouped `007` still reads. The fuzz acceptor follows the same rule |
+| b-F3 | low | Documented: the table is the 766 locales of the CLDR JSON packages; the CLDR 48 XML has one more locale with number data, `en_US_POSIX` (re-checked: of the 359 XML locales not named the same way in the table, only it and three variant locales the table holds in lower case carry `<numbers>`), and `en-US-POSIX` reads `en` here while Intl writes `-1234567.5` |
+| b-F4 | low | Multi-valued region aliases follow the UTS #35 Territory Exception (likely region of the language and script, else the first): `en-200` reads `en-CZ`, `ar-NT` `ar-SA`, `kk-SU` `kk-KZ`, `nl-AN` `nl-CW`, `en-830` `en-JE`, `en-PC` `en-FM`, each the locale Intl of Node 24.18 resolves |
+| b-F5 | low | README and GUIDE: 637 CLDR locales ICU ships under their own name plus 13 alias and fallback tags (re-counted from `intl-node.json`: 650 = 637 + 13) |
+| c-C1 | medium | stdin lines are trimmed of ASCII spaces, tabs and line breaks only, like the parsers; arguments are trimmed the same way |
+| c-C2, d-D2 | low | A reader that closes stdout early stops the command quietly with status 1 (stdout pointed at the null device); in-process and subprocess tests |
+| d-D1 | medium | An argument that starts with a minus and a digit or a point is a value on every Python; the same tests pass on 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t, by subprocess too |
+| e-F1 | medium | `test_parse_edges::test_str_subclasses_*`: a `str` subclass that lies in `join`, `strip`, `partition`, `split`, `replace`, `lower`, `startswith`, `__eq__`, `__len__` and `__str__`, as text, locale, separator and grouping |
+| e-F2 | medium | Case tests for the modifier, `root`, the variant and the script |
+| e-F3 | medium | Private use and extensions: `ca-ES-x-valencia` reads `ca` |
+| e-F4 | medium | Numeric regions: `de-756` reads `de-CH` and formats `1'234'567` |
+| e-F5 | low | `abcd`, `abcdefghi` and nine-character subtags are pinned as `ValueError` |
+| e-F6 | low | `12.`, `.5` and other values that are not plain numbers are pinned as CLI errors |
+| e-F7 | low | `--locales` output is compared whole, final newline included |
+
+Other changes made with these fixes, each in the CHANGELOG: a tag that names its language's
+likely script reads the same locale as without it for every language (`ru-Cyrl-UA` reads
+`ru-UA`, `ca-Latn-ES-valencia` reads `ca-ES-valencia`); `--help` and `--version` print to
+the stream given to `main` and return 0; long options may still be shortened to a unique
+prefix.
+
+Mutation re-check, one mutant at a time in a copy of the tree, `pytest -x` (doctests
+included) on Elena's PC, CPython 3.14.2: the 15 surviving mutants of lens e plus 9 against
+this round's fixes. All 24 killed.
+
+| # | Mutation | First catcher |
+| --- | --- | --- |
+| G8 | separator read through its own methods | `test_parse_edges::test_str_subclasses_are_read_by_their_value` |
+| N7 | grouping not converted to a plain `str` | `test_parse_edges::test_str_subclasses_cannot_fake_a_valid_grouping_or_hide_their_length` |
+| X5 | text stripped with its own `strip` | `test_parse_edges::test_str_subclasses_are_read_by_their_value` |
+| X6 | locale split with its own `partition` | `test_parse_edges::test_str_subclasses_are_read_by_their_value` |
+| X10 | `shown()` measures with the subclass `__len__` | `test_parse_edges::test_str_subclasses_cannot_fake_a_valid_grouping_or_hide_their_length` |
+| L3 | POSIX modifier case-sensitive | `test_locale_rules::test_every_subtag_is_read_in_any_case[sr_RS@LATIN-sr-Latn]` |
+| L8 | `ROOT` not recognised | `test_locale_rules::test_every_subtag_is_read_in_any_case[ROOT-und]` |
+| L13 | variant case kept | `test_locale_rules::test_every_subtag_is_read_in_any_case[ca-ES-VALENCIA-ca-ES-valencia]` |
+| L14 | script case kept | `test_locale_rules::test_every_subtag_is_read_in_any_case[zh-hant-TW-zh-Hant]` |
+| L7 | subtags after a singleton read as variants | `test_locale_rules::test_subtags_after_an_extension_or_private_use_are_not_variants[ca-ES-x-valencia-ca]` |
+| L6 | numeric regions not recognised | `test_locale_rules::test_a_region_with_several_replacements_takes_the_likely_one[en-200-en-CZ]` |
+| L1 | four-letter language accepted | `test_locale_rules::test_subtags_of_the_wrong_length_are_value_errors[abcd]` |
+| X13 | nine-character subtags accepted | `test_locale_rules::test_subtags_of_the_wrong_length_are_value_errors[de-CH-abcdefghi]` |
+| C9 | CLI accepts `12.` | `test_cli_args::test_values_must_be_plain_numbers[12.]` |
+| X2 | `--locales` drops its final newline | `test_cli::test_locales_lists_the_table` |
+| R1 | `nonlikelyScript` rule dropped | `test_locale_rules::test_a_script_other_than_the_likely_one_falls_back_to_the_root[ru-Latn]` |
+| R2 | first replacement region always taken | `test_locale_rules::test_a_region_with_several_replacements_takes_the_likely_one[kk-SU-kk-KZ]` |
+| R3 | grouped integers may start with `0` again | `test_docs::test_every_python_example_prints_its_comments` |
+| R4 | stdin stripped of every Unicode space | `test_cli_args::test_stdin_keeps_unicode_spaces_and_group_symbols` |
+| R5 | only plain negative digits are values (the old argparse rule) | `test_cli_args::test_negative_values_need_no_double_dash` |
+| R6 | a closed pipe raises | `test_cli_args::test_a_closed_pipe_stops_quietly_with_status_one` |
+| R7 | the likely-script chain may end at the root | `test_locale_rules::test_the_likely_script_and_the_explicit_parents_keep_their_data[ku-GE-ku]` |
+| R8 | arguments not trimmed | `test_cli_args::test_ascii_spaces_around_a_value_are_ignored_in_arguments_and_stdin` |
+| R9 | long options cannot be shortened | `test_cli_args::test_argument_errors_name_the_problem` |
+
+Runs at 1f26d23 (the fix commit):
+
+- Elena's PC, CPython 3.14.2, fresh clone with the fetched reference files and Node 24.18.0,
+  `INDGROUP_E2E=1`: 349 passed, nothing skipped (installed-wheel test and live Intl oracle
+  included).
+- This PC, one venv per interpreter, Node 24.18.0 on the path: 348 passed and 1 skipped
+  (the installed-wheel test) on 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t.
+- Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0.
+
+### Disputed findings
+
+None.
