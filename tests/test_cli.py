@@ -4,7 +4,7 @@ import io
 
 import pytest
 
-from indgroup import __version__, supported_locales
+from indgroup import __version__, format_indian, supported_locales
 from indgroup._cli import main
 
 
@@ -47,15 +47,11 @@ def test_no_values_print_nothing() -> None:
 
 
 def test_locales_lists_the_table() -> None:
-    status, out = run("--locales")
-    assert status == 0
-    assert out.splitlines() == list(supported_locales())
+    assert run("--locales") == (0, "".join(f"{locale}\n" for locale in supported_locales()))
 
 
-def test_version(capsys: pytest.CaptureFixture[str]) -> None:
-    with pytest.raises(SystemExit):
-        run("--version")
-    assert capsys.readouterr().out.strip() == f"indgroup {__version__} (CLDR 48.0.0)"
+def test_version() -> None:
+    assert run("--version") == (0, f"indgroup {__version__} (CLDR 48.0.0)\n")
 
 
 def test_bad_values_and_locales_exit_with_status_two(capsys: pytest.CaptureFixture[str]) -> None:
@@ -63,7 +59,7 @@ def test_bad_values_and_locales_exit_with_status_two(capsys: pytest.CaptureFixtu
     assert "not a plain number" in fails(capsys, "1e99999")
     assert "no number data" in fails(capsys, "1", "-l", "xx")
     assert "not a validly grouped" in fails(capsys, "-p", "1,234,567")
-    assert "invalid choice" in fails(capsys, "1", "-g", "sometimes")
+    assert "must be one of" in fails(capsys, "1", "-g", "sometimes")
 
 
 def test_a_terminal_without_values_is_a_usage_error(capsys: pytest.CaptureFixture[str]) -> None:
@@ -83,3 +79,12 @@ def test_invalid_utf8_on_stdin_is_reported(capsys: pytest.CaptureFixture[str]) -
         main([], stdin=raw, stdout=io.StringIO())
     assert raised.value.code == 2
     assert "not valid UTF-8" in capsys.readouterr().err
+
+
+def test_parse_prints_integers_past_the_int_string_limit() -> None:
+    digits = "9" * 5000
+    grouped = format_indian(10**5000 - 1)
+    assert grouped.replace(",", "") == digits
+    assert run("-p", grouped) == (0, digits + "\n")
+    assert run("-p", "-l", "de", digits) == (0, digits + "\n")
+    assert run(digits, "-g", "off") == (0, digits + "\n")

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "indgroup"
-version = "0.2.0"
+version = "1.0.0"
 description = "Format and strictly parse numbers with Indian lakh and crore grouping and the digit grouping of every Unicode CLDR locale"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,10 +13,12 @@ license-files = ["LICENSE", "LICENSE-UNICODE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
 keywords = ["lakh", "crore", "indian numbering", "digit grouping", "thousands separator", "number format", "cldr", "i18n", "l10n", "intl", "numberformat", "decimal"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Internationalization",
+    "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Localization",
     "Topic :: Text Processing",
     "Programming Language :: Python :: 3",
@@ -31,11 +33,11 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "pytest", "build", "twine"]
+dev = ["ruff", "mypy", "pytest", "pytest-timeout", "build", "twine"]
 
 [project.urls]
 Homepage = "https://lianes8studio.com"
-Repository = "https://github.com/JaviLianes8/indgroup"
+Source = "https://github.com/JaviLianes8/indgroup"
 Issues = "https://github.com/JaviLianes8/indgroup/issues"
 Changelog = "https://github.com/JaviLianes8/indgroup/blob/main/CHANGELOG.md"
 LinkedIn = "https://www.linkedin.com/in/jlianes/"
@@ -52,6 +54,7 @@ packages = ["src/indgroup"]
 exclude = [
     ".github",
     "IMPROVEMENTS-round*.md",
+    "CERT-1.0-*.md",
     "tests/upstream/*.tgz",
     "tests/upstream/*.cpp",
     "tests/upstream/*.html",
@@ -70,6 +73,7 @@ python_version = "3.10"
 strict = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["src", "tests"]
 pythonpath = ["src"]
-addopts = "-q"
+addopts = "-q --doctest-modules"
+timeout = 300

@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-import argparse
+import errno
+import os
 import re
 import sys
 from collections.abc import Sequence
 from decimal import Decimal
-from typing import TextIO, cast
+from typing import NoReturn, TextIO, cast
 
+from ._args import HELP, Args, UsageError, read_args
+from ._digits import SPACE
 from ._locale import cldr_version, supported_locales
 from ._number import Grouping, format_number, parse_number
+from ._value import shown
 
 __all__ = ["main"]
 
@@ -18,91 +22,107 @@ _BOM = chr(0xFEFF)
 _PLAIN = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,4})?")
 
 
-def _parser() -> argparse.ArgumentParser:
-    from . import __version__
-
-    parser = argparse.ArgumentParser(
-        prog="indgroup",
-        description="Group the digits of numbers the way a locale writes them (Unicode CLDR).",
-        epilog="Without VALUE arguments the values are read from stdin, one per non-blank line."
-        " Put -- before negative values other than plain digits, such as -1e5 or -1.234,5.",
-    )
-    parser.add_argument("values", nargs="*", metavar="VALUE", help="the numbers, in order")
-    parser.add_argument("-l", "--locale", default="en-IN", help="BCP 47 locale (default: en-IN)")
-    parser.add_argument(
-        "-g",
-        "--grouping",
-        default="auto",
-        choices=["auto", "min2", "always", "off"],
-        help="when to group, as Intl.NumberFormat useGrouping (default: auto)",
-    )
-    parser.add_argument(
-        "-p",
-        "--parse",
-        action="store_true",
-        help="read grouped values written in the locale and print them plain",
-    )
-    parser.add_argument(
-        "--locales", action="store_true", help="list the supported locales and exit"
-    )
-    parser.add_argument(
-        "--version", action="version", version=f"indgroup {__version__} (CLDR {cldr_version()})"
-    )
-    return parser
-
-
-def _utf8(stream: TextIO, encoding: str = "utf-8") -> None:
+def _utf8(stream: TextIO | None, encoding: str = "utf-8", errors: str = "strict") -> None:
     # Pipes default to the legacy code page on Windows, which cannot carry U+202F and friends.
     reconfigure = getattr(stream, "reconfigure", None)
-    if reconfigure is not None and not stream.isatty():
-        reconfigure(encoding=encoding)
+    if reconfigure is not None and stream is not None and not stream.isatty():
+        reconfigure(encoding=encoding, errors=errors)
+
+
+def _fail(message: str) -> NoReturn:
+    # A stderr that is missing or whose reader left is treated as stdout is, so the status stays 2.
+    _write(sys.stderr, f"indgroup: error: {message}\n")
+    raise SystemExit(2)
 
 
 def _read_values(stdin: TextIO) -> list[str]:
-    values = [line.strip() for line in stdin]
+    # The same trimming as the parsers: a no-break space may be a group symbol, never padding.
+    values = [line.strip(SPACE) for line in stdin]
     if values:
-        values[0] = values[0].removeprefix(_BOM).strip()
+        values[0] = values[0].removeprefix(_BOM).strip(SPACE)
     return [value for value in values if value]
 
 
-def _convert(value: str, args: argparse.Namespace) -> str:
+def _convert(value: str, args: Args) -> str:
     if args.parse:
         number = parse_number(value, args.locale)
-        return str(number) if isinstance(number, int) else format(number, "f")
-    if not _PLAIN.fullmatch(value):
-        raise ValueError(f"not a plain number: {value!r}")
-    return format_number(Decimal(value), args.locale, grouping=cast(Grouping, args.grouping))
+        return format(Decimal(number), "f")  # str(int) stops at 4300 digits
+    plain = value.strip(SPACE)
+    if not _PLAIN.fullmatch(plain):
+        raise ValueError(f"not a plain number: {shown(value)}")
+    return format_number(Decimal(plain), args.locale, grouping=cast(Grouping, args.grouping))
+
+
+def _closed(error: OSError) -> bool:
+    # Windows reports a reader that went away as EINVAL as often as EPIPE.
+    return isinstance(error, BrokenPipeError) or (
+        sys.platform == "win32" and error.errno == errno.EINVAL
+    )
+
+
+def _write(stdout: TextIO | None, text: str) -> int:
+    """Write ``text``; 1, quietly, when the reader closed the pipe (``indgroup | head -1``)."""
+    if stdout is None:  # started without a stdout: as if its reader had already gone
+        return 1 if text else 0
+    try:
+        stdout.write(text)
+        stdout.flush()
+    except OSError as error:
+        if not _closed(error):
+            raise
+        try:
+            descriptor = stdout.fileno()
+        except (OSError, ValueError):  # not a real file, such as a StringIO
+            return 1
+        # What is still buffered goes nowhere, so the exit flush cannot fail a second time.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, descriptor)
+        os.close(devnull)
+        return 1
+    return 0
 
 
 def main(
     argv: Sequence[str] | None = None, stdin: TextIO | None = None, stdout: TextIO | None = None
 ) -> int:
-    """Run the command line and return 0.
+    """Run the command line and return its exit status: 0, or 1 if stdout's reader left.
 
     Bad arguments, an unknown locale, a value that cannot be read or stdin that is not
-    UTF-8 exit with status 2 through ``SystemExit``. Without streams it reads ``sys.stdin``
-    and writes ``sys.stdout``, switching them to UTF-8 when they are pipes.
+    UTF-8 print one line on stderr and exit with status 2 through ``SystemExit``. Without
+    streams it reads ``sys.stdin`` and writes ``sys.stdout``, switching each one it uses
+    to UTF-8 when it is a pipe, and ``sys.stderr`` too when it writes ``sys.stdout``.
     """
-    if stdin is None:
-        stdin = sys.stdin
-        _utf8(stdin, "utf-8-sig")
-    if stdout is None:
-        stdout = sys.stdout
-        _utf8(stdout)
-    parser = _parser()
-    args = parser.parse_args(argv)
-    if args.locales:
-        stdout.write("\n".join(supported_locales()) + "\n")
-        return 0
-    if not args.values and stdin.isatty():
-        parser.error("no values: pass VALUE arguments or pipe them on stdin")
+    from . import __version__
+
+    # Python sets sys.stdin and sys.stdout to None when the process starts without them.
+    source: TextIO | None = stdin
+    if source is None:
+        source = sys.stdin
+        _utf8(source, "utf-8-sig")
+    target: TextIO | None = stdout
+    if target is None:
+        target = sys.stdout
+        _utf8(target)
+        # A program that reads stdout as UTF-8 reads stderr the same way; never fail on it.
+        _utf8(sys.stderr, errors="backslashreplace")
     try:
-        values = args.values or _read_values(stdin)
+        args = read_args(list(sys.argv[1:] if argv is None else argv))
+    except UsageError as error:
+        _fail(str(error))
+    if args.show == "help":
+        return _write(target, HELP)
+    if args.show == "version":
+        return _write(target, f"indgroup {__version__} (CLDR {cldr_version()})\n")
+    if args.locales:
+        return _write(target, "\n".join(supported_locales()) + "\n")
+    if not args.values and (source is None or source.isatty()):
+        _fail("no values: pass VALUE arguments or pipe them on stdin")
+    try:
+        values = args.values or _read_values(source)
     except UnicodeDecodeError:
-        parser.exit(2, "indgroup: error: stdin is not valid UTF-8\n")
+        _fail("stdin is not valid UTF-8")
     try:
         lines = [_convert(value, args) for value in values]
     except (LookupError, ValueError) as error:
-        parser.exit(2, f"indgroup: error: {error}\n")
-    stdout.write("".join(f"{line}\n" for line in lines))
-    return 0
+        _fail(str(error))
+    return _write(target, "".join(f"{line}\n" for line in lines))

@@ -3,8 +3,9 @@
 The CLDR packages are fetched into tests/upstream by scripts/fetch_upstream.py and are not
 part of the repository. The table keeps only facts: for every locale the Latin-digit decimal,
 group and minus symbols, the grouping sizes of the standard decimal pattern and the minimum
-grouping digits; plus the parent locales, the likely script of a language and region where
-a language has several, and the language and region codes CLDR replaces.
+grouping digits; plus the parent locales, the likely script of every language (and of its
+regions that differ, where a language has several), the likely region of every language,
+and the language and region codes CLDR replaces.
 
     python scripts/build_table.py
 """
@@ -88,29 +89,51 @@ def derive(upstream: Path = UPSTREAM) -> dict[str, Any]:
         "locales": locales,
         "parents": dict(sorted(supplemental["parentLocale"].items())),
         "scripts": _likely_scripts(locales, likely),
+        "homes": _likely_regions(locales, likely),
         "aliases": _language_aliases(locales, aliases["languageAlias"]),
         "regions": _region_aliases(aliases["territoryAlias"]),
     }
 
 
 def _likely_scripts(locales: dict[str, int], likely: dict[str, str]) -> dict[str, str]:
-    """The likely script of each language written in several, and of its regions that differ.
+    """The likely script of every language, and of the regions that differ where it has several.
 
-    Only languages with locales in more than one script need it: that is what makes
-    ``zh-TW`` read the Traditional Chinese data and ``sr-ME`` reach ``sr-Latn-ME``.
+    The language's own script decides CLDR's nonlikelyScript parent rule (``ru-Latn`` falls
+    back to the root locale, not to ``ru``). The regions matter only for languages with
+    locales in more than one script: that is what makes ``zh-TW`` read the Traditional
+    Chinese data and ``sr-ME`` reach ``sr-Latn-ME``.
     """
+    languages = {name.split("-")[0] for name in locales} - {"und"}
     multi = {name.split("-")[0] for name in locales if _script(name)}
     found: dict[str, str] = {}
     for key, value in sorted(likely.items()):
         parts = key.split("-")
-        if parts[0] not in multi or not 1 <= len(parts) <= 2:
+        if parts[0] not in languages or not 1 <= len(parts) <= 2:
             continue
-        if len(parts) == 2 and not REGION.fullmatch(parts[1]):
+        if len(parts) == 2 and (parts[0] not in multi or not REGION.fullmatch(parts[1])):
             continue
         default = likely.get(parts[0], "").split("-")
         script = value.split("-")[1]
         if len(parts) == 1 or (len(default) > 1 and script != default[1]):
             found[key] = script
+    return found
+
+
+def _likely_regions(locales: dict[str, int], likely: dict[str, str]) -> dict[str, str]:
+    """The likely region of every language, and of a language and script where it differs.
+
+    UTS #35 uses it to pick one region when a deprecated code has several replacements
+    (``200``, Czechoslovakia, is ``CZ`` or ``SK``).
+    """
+    languages = {name.split("-")[0] for name in locales} - {"und"}
+    found: dict[str, str] = {}
+    for key, value in sorted(likely.items()):
+        parts = key.split("-")
+        if parts[0] not in languages or len(parts) > 2 or (len(parts) == 2 and len(parts[1]) != 4):
+            continue
+        region = value.split("-")[-1]
+        if len(parts) == 1 or region != likely.get(parts[0], "").split("-")[-1]:
+            found[key] = region
     return found
 
 
@@ -131,11 +154,11 @@ def _language_aliases(locales: dict[str, int], table: dict[str, Any]) -> dict[st
 
 
 def _region_aliases(table: dict[str, Any]) -> dict[str, str]:
-    """Region codes CLDR replaces by exactly one other region (``UK`` is ``GB``)."""
+    """Region codes CLDR replaces (``UK`` is ``GB``); several replacements are space-separated."""
     return {
         key: entry["_replacement"]
         for key, entry in sorted(table.items())
-        if REGION.fullmatch(key) and REGION.fullmatch(entry["_replacement"])
+        if REGION.fullmatch(key) and all(REGION.fullmatch(r) for r in entry["_replacement"].split())
     }
 
 
