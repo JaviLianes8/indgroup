@@ -19,6 +19,8 @@ Progress:
 - [x] QA round 1: five lenses reported, every finding fixed (see QA)
 - [x] QA round 2: five lenses re-checked round 1, every new finding fixed (see QA)
 - [x] QA round 3: lenses d and e re-checked round 2, every new finding fixed (see QA)
+- [x] QA round 4: lens d re-checked round 3, its new finding fixed (see QA)
+- [x] Suite, gates, packages and matrix re-verified at b63f709 (see Matrix, packaging and gates)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -160,6 +162,40 @@ fetched reference files copied in and Node 24.18.0 on the path:
 - Sdist: sources, tests, scripts, README, GUIDE, CHANGELOG, CONTRIBUTING, both licences,
   `requirements-dev.txt` and `tests/upstream/MANIFEST.json`. The fetched third-party files,
   this report and the improvement notes are excluded.
+
+### At b63f709 (after QA round 4)
+
+`https://pypi.org/pypi/indgroup/json` still answered 404 on 2026-10-26. `python -m build` at
+b63f709 gives the same files on two separate builds, so every run below tested one wheel
+(sha256 `85ab5b8e7f743af21b7528fa28802ab2dc9094fd620212fb4fd6c09b56f0f681`) and one sdist
+(`90fefd13cb943f35742dd140d590597b560f03275b44c52a255edeb4347c5985`).
+
+- Elena's PC, CPython 3.14.2, `git archive` of b63f709 with the fetched reference files,
+  `INDGROUP_E2E=1`: 402 passed, 10 skipped, exit 0 (installed-wheel test included). Skipped:
+  the five closed-stream shell cases (no POSIX shell there), the two tree checks (no git
+  checkout) and the live Intl oracle (its Node has ICU 78.2). Gates in the same tree:
+  `ruff format --check .`, `ruff check .`, `mypy --strict src` and `mypy --strict src tests`
+  each exit 0.
+- This PC, the interpreter matrix of lens d's fifth check on this wheel, same method as
+  above:
+
+| Python | sdist suite against the wheel | Doctests in site-packages |
+| --- | --- | --- |
+| 3.10.19 | 399 passed, 3 skipped | 10 passed |
+| 3.11.5 | 399 passed, 3 skipped | 10 passed |
+| 3.12.12 | 399 passed, 3 skipped | 10 passed |
+| 3.13.2 | 399 passed, 3 skipped | 10 passed |
+| 3.14.2 | 399 passed, 3 skipped | 10 passed |
+| 3.14.2t | 399 passed, 3 skipped (re-run) | 10 passed |
+
+  In that run 3.14.2t had 3 failures, all in the live Intl oracle: Node could not start
+  (Windows status `0xC0000142`, DLL initialisation failed) while this PC was loaded by other
+  work. Re-run in a new 3.14.2t venv with the same wheel and Node 24.18.0: the oracle files
+  pass (5 passed), then the whole sdist suite (399 passed, 3 skipped) and the doctests
+  (10 passed). A new full matrix by the author could not get a turn on this PC, which stayed
+  above its load limit for the whole session.
+- `twine check --strict`: wheel and sdist PASSED. Contents as listed above, plus the
+  `_args.py` module of the new command-line reader and the new test files in the sdist.
 
 ## QA
 
