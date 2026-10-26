@@ -13,9 +13,9 @@ Progress:
 - [x] Ground truth: CLDR, ICU and UTS #35 re-fetched, Intl.NumberFormat re-run (item 7)
 - [x] Contract, fuzz and author mutation round (items 6, 9, 18)
 - [x] Docs: README, GUIDE, CHANGELOG (items 11, 12)
-- [ ] Packaging, e2e, every Python (items 8, 10, 13, 14)
-- [ ] Gates (item 15)
-- [ ] PR and trace guard
+- [x] Packaging, e2e, every Python (items 8, 10, 13, 14)
+- [x] Gates (item 15)
+- [x] PR #3 and trace guard CLEAN
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -30,14 +30,14 @@ Progress:
 | 5 | Typed, documented, bounded errors | PASS: `TypeError` for wrong types, `ValueError` for bad values, `LookupError` for locales without data, each documented per function; messages quote at most 40 characters of the input |
 | 6 | Contract tests of every public name | PASS |
 | 7 | Real ground truth | PASS: see Ground truth |
-| 8 | Real e2e from the wheel | pending the matrix run |
+| 8 | Real e2e from the wheel | PASS: wheel built, installed in a throwaway venv, driven from an empty folder, typed from a consumer with `mypy --strict`, CLI run as `indgroup` and `python -m indgroup`; no PyPI release to upgrade from |
 | 9 | Seeded fuzz, no crash, hang or blowup | PASS: three seeds over the formatters, the strict grammar of both parsers against an independent acceptor, and timed hostile shapes |
-| 10 | Supported Pythons | pending the matrix run |
-| 11 | README and `twine check` | pending the matrix run for `twine check` |
+| 10 | Supported Pythons | PASS: CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t (free-threaded); 3.8.20 and 3.9.25 are installed but below `requires-python`; no 3.13t is installed here |
+| 11 | README and `twine check` | PASS: `twine check --strict` on wheel and sdist, absolute links, README examples run as tests, the Babel facts re-checked against Babel 2.18.0 (10 MB wheel, CLDR 47, `format_decimal(1234, locale="es")` gives `1.234`, three fraction digits unless `decimal_quantization=False`) |
 | 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-10-25 |
 | 13 | pyproject 1.0.0, Production/Stable | PASS: classifiers for 3.10 to 3.14, `MIT AND Unicode-3.0`, both licence files, URLs, keywords, no runtime dependencies |
-| 14 | sdist and wheel contents | pending the matrix run |
-| 15 | Gates each exit 0 | pending the matrix run |
+| 14 | sdist and wheel contents | PASS: see Matrix, packaging and gates |
+| 15 | Gates each exit 0 | PASS: see Matrix, packaging and gates |
 | 18 | Contracts bite (mutations) | PASS: 18 of 18 author mutations killed, see Mutation round |
 
 ## Defects found in 0.2.0 (reproduced on 2026-10-25)
@@ -64,6 +64,9 @@ All four are fixed on this branch and listed in the CHANGELOG.
   compares each call with the bare conversion it cannot avoid on the same machine (at most
   three times it plus 0.2 s); the refusal of a 12-million-digit integer and the
   adversarial parser shapes keep their absolute CPU-time bounds.
+- The test that rebuilds the CLDR table read `src/indgroup/_cldr.json` from the tree, so the
+  sdist suite run against an installed wheel (sources removed) failed on every interpreter.
+  It now reads the table of the imported package, which in that run is the wheel's own.
 
 ## Ground truth
 
@@ -124,4 +127,33 @@ that also catches it.
 
 ## Matrix, packaging and gates
 
-Pending.
+Run on this PC at 9ade550 on 2026-10-26 from a fresh clone of `release/1.0.0`, with the
+fetched reference files copied in and Node 24.18.0 on the path:
+
+- Wheel and sdist built with `python -m build`. For each interpreter a new venv got the wheel
+  plus pytest; the sdist's test suite ran from the unpacked sdist with its `src` removed, so
+  it imported the installed wheel, then the package doctests ran from site-packages.
+
+| Python | sdist suite against the wheel | Doctests in site-packages |
+| --- | --- | --- |
+| 3.10.19 | 235 passed, 3 skipped | 10 passed |
+| 3.11.5 | 235 passed, 3 skipped | 10 passed |
+| 3.12.12 | 235 passed, 3 skipped | 10 passed |
+| 3.13.2 | 235 passed, 3 skipped | 10 passed |
+| 3.14.2 | 235 passed, 3 skipped | 10 passed |
+| 3.14.2t | 235 passed, 3 skipped | 10 passed |
+
+  The three skips are the installed-wheel test (needs `INDGROUP_E2E=1`) and the two checks
+  that need a git checkout.
+- Full suite in the clone with `INDGROUP_E2E=1` (doctests, the installed-wheel test with
+  both CLI entry points, the live Intl oracle): exit 0. The same suite, without the e2e
+  test, passed on the laptop with CPython 3.14.6.
+- Gates in the clone: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0, `pytest` as above.
+- `twine check --strict dist/*`: both PASSED.
+- Wheel: the package modules, `_cldr.json`, `py.typed`, `__main__.py`, the entry point
+  `indgroup = indgroup._cli:main`, and `LICENSE` plus `LICENSE-UNICODE` under
+  `dist-info/licenses`. Nothing else.
+- Sdist: sources, tests, scripts, README, GUIDE, CHANGELOG, CONTRIBUTING, both licences,
+  `requirements-dev.txt` and `tests/upstream/MANIFEST.json`. The fetched third-party files,
+  this report and the improvement notes are excluded.
