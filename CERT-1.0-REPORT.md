@@ -290,7 +290,7 @@ reader where its code moved, plus 7 against this round's fixes. All 17 killed.
 | Q2 | an unknown letter inside a cluster not named | `test_cli_grammar::test_flags_take_no_value` |
 | H1 | `-h` inside a cluster does not end the reading | `test_cli_args::test_help_and_version_print_to_stdout_and_exit_zero` |
 
-Runs on the fix:
+Runs at f500369 (the fix commit):
 
 - Elena's PC, CPython 3.14.2, the tree with the fetched reference files, `INDGROUP_E2E=1`:
   377 passed, 7 skipped (the installed-wheel test included). Skipped: the four closed-stream
