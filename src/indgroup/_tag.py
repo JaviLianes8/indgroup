@@ -43,43 +43,49 @@ def _legacy(subtags: list[str]) -> list[str]:
     """``subtags`` with CLDR's language aliases of several subtags applied.
 
     A rule matches when its first subtag is the language (``und`` matches any) and its other
-    subtags all stand before the first extension. They are removed; the replacement's
-    language takes the place of the tag's, and its script and region fill only what the tag
-    leaves empty: ``zh-yue-HK`` is ``yue-HK``, ``sv-aaland`` is ``sv-AX``, ``sv-FI-aaland``
-    is ``sv-FI``. As in UTS #35, the rules apply until none matches, so a replacement can
-    match a further rule: ``zh-cmn-yue`` is ``zh-yue``, then ``yue``.
+    subtags all stand before the first extension. They are removed and the replacement's
+    language takes the place of the tag's. What the tag has left is read as a tag: its own
+    extended language, script and region stay first, the replacements' script and region
+    fill only what it leaves empty and their variants follow its own: ``zh-yue-HK`` is
+    ``yue-HK``, ``sv-aaland`` is ``sv-AX``, ``sv-FI-aaland`` is ``sv-FI``, ``be-arevela-Latn``
+    is ``be-Latn`` and ``be-abc-aaland`` is ``be-abc-AX``, which ``parse_tag`` refuses. As in
+    UTS #35, the rules apply until none matches, so a replacement can match a further rule:
+    ``zh-cmn-yue`` is ``zh-yue``, then ``yue``. Since the tag's own subtags and the
+    replacements' are kept apart until the end, a chain of rules reads like one rule.
     """
+    end = next((at for at in range(1, len(subtags)) if len(subtags[at]) == 1), len(subtags))
+    language, own = subtags[0], subtags[1:end]
+    added: list[str] = []  # the replacements' subtags after their language
     # A rule removes the subtags it matched, and no replacement brings back all of a rule's
     # subtags, so each rule applies at most once and this bound is only a guard.
     for _ in range(len(table()["tags"]) + 1):
-        lowered = [part.lower() for part in subtags]
-        end = next((at for at in range(1, len(lowered)) if len(lowered[at]) == 1), len(lowered))
-        present = set(lowered[1:end])
+        present = {part.lower() for part in (*own, *added)}
         found = [
             (first, need, replacement)
-            for first in dict.fromkeys((lowered[0], "und"))
+            for first in dict.fromkeys((language.lower(), "und"))
             for need, replacement in _rules().get(first, ())
             if need <= present
         ]
         if not found:
             break
-        first, need, (language, *extra) = found[0]
-        if language == "und" and first == "und":
-            language = subtags[0]
-        rest = [part for part in subtags[1:end] if part.lower() not in need]
-        script = rest.pop(0) if rest and _is_script(rest[0]) else ""
-        region = rest.pop(0) if rest and _is_region(rest[0]) else ""
-        variants = []
-        for part in extra:
-            if _is_script(part):
-                script = script or part
-            elif _is_region(part):
-                region = region or part
-            else:
-                variants.append(part)
-        fields = [part for part in (script, region) if part]
-        subtags = [language, *fields, *variants, *rest, *subtags[end:]]
-    return subtags
+        first, need, (replaced, *extra) = found[0]
+        if replaced != "und" or first != "und":
+            language = replaced
+        own = [part for part in own if part.lower() not in need]
+        added = [part for part in added if part.lower() not in need] + extra
+    extended = [own.pop(0)] if own and len(own[0]) == 3 and own[0].isalpha() else []
+    script = own.pop(0) if own and _is_script(own[0]) else ""
+    region = own.pop(0) if own and _is_region(own[0]) else ""
+    variants = []
+    for part in added:
+        if _is_script(part):
+            script = script or part
+        elif _is_region(part):
+            region = region or part
+        else:
+            variants.append(part)
+    fields = [part for part in (script, region) if part]
+    return [language, *extended, *fields, *own, *variants, *subtags[end:]]
 
 
 def parse_tag(locale: str) -> tuple[str, str, str, list[str]]:

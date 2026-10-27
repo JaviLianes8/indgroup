@@ -71,7 +71,8 @@ def resolve_locale(locale: str) -> str:
     none); ``TypeError`` for a non-``str``; and ``ValueError`` for text that is not a tag: an
     empty subtag, one longer than eight characters or not made of ASCII letters and digits,
     a language subtag that is not two, three or five to eight letters, or a three-letter
-    extended language subtag CLDR does not replace (``en-abc``). Subtags after the script or
+    extended language subtag CLDR does not replace (``en-abc``, ``be-abc-aaland``, where the
+    legacy rule removes only ``aaland``). Subtags after the script or
     region are read as variants without checking their grammar (``en-Latn-abc`` reads ``en``).
 
     >>> resolve_locale("pt_BR.UTF-8"), resolve_locale("zh-TW"), resolve_locale("iw")

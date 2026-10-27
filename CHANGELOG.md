@@ -28,7 +28,12 @@ needs a new major version.
   `zh-yue` is `yue`). In 0.2.0 these raised `ValueError` or `LookupError`, or read the wrong
   data. An alias whose replacement has no number data raises `LookupError` instead of reading
   the data of the tag's first subtag: `hy-arevmda` (Western Armenian) read `hy`, `zh-hakka`
-  and `zh-xiang` read `zh`. Other extended language subtags (`en-abc`) still raise `ValueError`.
+  and `zh-xiang` read `zh`. Other extended language subtags (`en-abc`) still raise `ValueError`,
+  also when a legacy rule elsewhere in the tag removes other subtags: `be-abc-aaland`,
+  `en-abc-gb-oed` and `ja-aaland-abc` raise it as `be-abc` does. A rule removes the subtags it
+  matched and what is left is read as a tag, its own script and region first and the
+  replacement's variants after its own, so a chain of rules reads what one rule does:
+  `be-arevela-hepburn-heploc-Latn` reads `und`, as `be-arevela-Latn` (`be-Latn`) does.
 - A tag whose region's likely script differs from its language's and has no data reads what
   its full form reads, the root locale, as CLDR's likely subtags and `nonlikelyScript` rule
   say: `ku-GE` (`ku-Cyrl-GE`), `ku-AM`, `ku-AZ`, `ku-TM`, `ky-CN`, `ky-TR`, `tg-PK`, `ug-KZ`,

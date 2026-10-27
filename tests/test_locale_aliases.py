@@ -68,7 +68,20 @@ def test_an_alias_inside_an_extension_is_not_applied() -> None:
     assert resolve_locale("hy-x-arevmda") == "hy"
 
 
-@pytest.mark.parametrize("tag", ["en-abc", "zh-abc-HK", "ar-aao", "en-abc-US"])
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "en-abc",
+        "zh-abc-HK",
+        "ar-aao",
+        "en-abc-US",
+        # A legacy rule later in the tag does not make the subtag it leaves acceptable.
+        "be-abc-aaland",
+        "sv-abc-aaland",
+        "en-abc-gb-oed",
+        "ja-abc-hepburn-heploc",
+    ],
+)
 def test_other_extended_language_subtags_are_value_errors(tag: str) -> None:
     with pytest.raises(ValueError, match="extended language subtags are not supported"):
         resolve_locale(tag)
