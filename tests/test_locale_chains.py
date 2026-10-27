@@ -123,3 +123,40 @@ def test_the_longest_chains_read_the_region_after_them(tag: str, expected: str, 
     # region wins wherever it stands, so the effect of every rule before it shows.
     assert resolve_locale(tag) == expected
     assert format_number(VALUE, tag) == text
+
+
+@pytest.mark.parametrize(
+    ("tag", "expected"),
+    [
+        ("sv-aaland-valencia", "sv-AX"),
+        ("en-gb-oed-valencia", "en-GB"),
+        ("sv-aaland-abcde", "sv-AX"),
+        ("sv-a1b-aaland", "sv-AX"),
+        ("en-1ab-gb-oed", "en-GB"),
+        ("zh-cmn-a1b-hant", "zh-Hant"),
+    ],
+)
+def test_only_three_letters_the_rules_leave_first_are_an_extended_language_subtag(
+    tag: str, expected: str
+) -> None:
+    # A variant or a subtag with a digit left first by the rules stays among the variants,
+    # so the replacement's script or region still fills the tag's empty one.
+    assert resolve_locale(tag) == expected
+
+
+@pytest.mark.parametrize("tag", ["es-419-aaland", "es-aaland-419"])
+def test_the_tag_s_own_numeric_region_beats_the_region_a_rule_brings(tag: str) -> None:
+    assert resolve_locale(tag) == "es-419"
+    assert format_number(VALUE, tag) == "-1,234,567.5"
+    assert resolve_locale("sv-419-aaland") == resolve_locale("sv-419") == "sv"
+
+
+@pytest.mark.parametrize(("tag", "expected"), [("no-bok-bok", "nb"), ("zh-yue-yue", "yue")])
+def test_a_rule_removes_every_occurrence_of_the_subtags_it_matched(tag: str, expected: str) -> None:
+    assert resolve_locale(tag) == expected
+
+
+def test_a_repeated_region_a_rule_matched_does_not_stay_behind() -> None:
+    # en-gb-oed removes both GB and gb, so cmn is left first: an extended language subtag.
+    with pytest.raises(ValueError, match="extended language subtags are not supported"):
+        resolve_locale("en-GB-gb-oed-cmn")

@@ -81,10 +81,13 @@ sign, and for Persian a left-to-right mark before it.
   tag's own script and region kept: `zh-yue-HK` is `yue-HK`, `zh-cmn-Hant` is `zh-Hant`,
   `no-bok` is `nb`, `i-lux` is `lb`, `art-lojban` is `jbo`, `sv-aaland` is `sv-AX`. The
   rules apply until none matches, as UTS #35 says: `zh-cmn-yue` is `zh-yue`, then `yue`.
-  A rule removes the subtags it matched, and what the tag has left is read as a tag: its own
-  script and region win wherever they stand in it, and the replacement's variants follow the
-  tag's own. So `be-arevela-Latn` is `be-Latn` (the root), and a chain of rules reads what
-  one rule does: `be-arevela-hepburn-heploc-Latn` is `be-Latn-alalc97`, the root as well.
+  A rule removes every occurrence of the subtags it matched (`no-bok-bok` is `nb`), and what
+  the tag has left is read as a tag: its own script and region win wherever they stand in it
+  (`es-aaland-419` is `es-419`), and the replacement's variants follow the tag's own. A variant
+  or a subtag with a digit that the rules leave first is not an extended language subtag:
+  `sv-aaland-valencia` and `sv-a1b-aaland` are `sv-AX`. So `be-arevela-Latn` is `be-Latn` (the
+  root), and a chain of rules reads what one rule does: `be-arevela-hepburn-heploc-Latn` is
+  `be-Latn-alalc97`, the root as well.
   Where the replacement has no number data the tag raises `LookupError`, as any unknown
   language does: `hy-arevmda` is Western Armenian (`hyw`) and `zh-hakka` is Hakka (`hak`), so neither
   reads Armenian or Chinese.
