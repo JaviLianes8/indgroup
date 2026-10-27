@@ -26,6 +26,7 @@ Progress:
 - [x] QA round 7: lens e re-checked round 6 and reported 3 findings, every one fixed in ec8a8e7 (see QA)
 - [x] QA round 8: lens e re-checked round 7 and reported 2 findings, both fixed in a10bba6 (see QA)
 - [x] QA round 9: lens e re-checked round 8 and reported 3 findings, every one fixed in c84b46b (see QA)
+- [x] QA round 10: lens e re-checked round 9 and reported 4 findings, every one fixed in 4d8440f (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -644,6 +645,46 @@ Runs at c84b46b:
 - CPython 3.13.2 on this PC, with Node 24.18 (ICU 78.3) and the fetched reference files:
   `test_sources`, `test_oracle_intl`, `test_intl`, `test_docs` and the two changed test files
   pass with no skip (145 passed).
+
+### Round 10 (2026-10-27, at ab8f395)
+
+Lens e re-checked round 9 at ab8f395. Its three round 9 findings are fixed: N6-T13, N6-T15 and
+the three bounds of N6-T27 are killed by the round 9 tests. As no source file changed since
+round 8, it capped its sweep at 10 mutants on `_tag._legacy`, run on Elena's PC (baseline 605
+passed, 17 skipped) with the skipped upstream-data and Node tests rerun on this PC: 4 killed,
+2 proven equivalent (0 differences over 377,736 probe tags) and 4 surviving and not
+equivalent, reported as N7-S01, N7-S02, N7-S04 and N7-S05. None is disputed. All four are
+missing contracts, not behaviour bugs: the code already gave the results the lens asked to
+pin, so no behaviour changes and the CHANGELOG has nothing to add. GUIDE.md and the docstring
+of `_legacy` now say what the tests pin. The fix is in 4d8440f.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| N7-S01 | low | `test_locale_chains::test_only_three_letters_the_rules_leave_first_are_an_extended_language_subtag`: `sv-aaland-valencia` and `sv-aaland-abcde` read `sv-AX`, `en-gb-oed-valencia` reads `en-GB`. A variant the rules leave first stays a variant, so the replacement's region still fills the tag's empty one |
+| N7-S02 | low | The same test: `sv-a1b-aaland` reads `sv-AX`, `en-1ab-gb-oed` reads `en-GB` and `zh-cmn-a1b-hant` reads `zh-Hant`. A three-character subtag with a digit is not an extended language subtag either |
+| N7-S04 | low | `test_locale_chains::test_the_tag_s_own_numeric_region_beats_the_region_a_rule_brings`: `es-419-aaland` and `es-aaland-419` read `es-419` and format `-1,234,567.5`, and `sv-419-aaland` reads what `sv-419` reads, `sv` |
+| N7-S05 | low | A rule removes every occurrence of the subtags it matched, now said in GUIDE.md and pinned: `test_locale_chains::test_a_rule_removes_every_occurrence_of_the_subtags_it_matched` (`no-bok-bok` reads `nb`, `zh-yue-yue` reads `yue`) and `test_a_repeated_region_a_rule_matched_does_not_stay_behind` (`en-GB-gb-oed-cmn` raises `ValueError`, as `en-cmn` does) |
+
+Mutation check, one mutant at a time on this PC (CPython 3.13.2) on a copy of the tree,
+running `test_locale_chains`:
+
+| Mutant | First catcher |
+| --- | --- |
+| N7-S01: `len(own[0]) >= 3` in the extended language subtag split | `test_locale_chains::test_only_three_letters_the_rules_leave_first_are_an_extended_language_subtag[sv-aaland-valencia-sv-AX]` |
+| N7-S02: `not own[0].isdigit()` in place of `own[0].isalpha()` | `test_locale_chains::test_only_three_letters_the_rules_leave_first_are_an_extended_language_subtag[sv-a1b-aaland-sv-AX]` |
+| N7-S04: only two letters are the tag's own region | `test_locale_chains::test_the_tag_s_own_numeric_region_beats_the_region_a_rule_brings[es-419-aaland]` |
+| N7-S05: a rule removes only the first occurrence of each subtag | `test_locale_chains::test_a_rule_removes_every_occurrence_of_the_subtags_it_matched[no-bok-bok-nb]` |
+
+Runs at 4d8440f:
+
+- Gates on this PC: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0. No source file is over 200 lines.
+- Full suite on Elena's PC (CPython 3.14, a clean venv on a clone of the committed branch, a
+  turn taken): exit 0, 617 passed, doctests included, and 16 skipped there (no Node with ICU
+  78.3, no POSIX shell, the opt-in installed-wheel test, no fetched reference files).
+- CPython 3.13.2 on this PC, with Node 24.18 (ICU 78.3) and the fetched reference files:
+  `test_sources`, `test_oracle_intl`, `test_intl`, `test_docs` and `test_locale_chains` pass
+  with no skip (92 passed).
 
 ### Disputed findings
 
