@@ -79,14 +79,16 @@ sign, and for Persian a left-to-right mark before it.
   to a tag without one: `swc` reads `sw-CD`, but `swc-KE` reads `sw-KE`.
 - The legacy tags of several subtags that CLDR replaces read their replacement, with the
   tag's own script and region kept: `zh-yue-HK` is `yue-HK`, `zh-cmn-Hant` is `zh-Hant`,
-  `no-bok` is `nb`, `i-lux` is `lb`, `art-lojban` is `jbo`, `sv-aaland` is `sv-AX`. Where
-  the replacement has no number data the tag raises `LookupError`, as any unknown language
-  does: `hy-arevmda` is Western Armenian (`hyw`) and `zh-hakka` is Hakka (`hak`), so neither
+  `no-bok` is `nb`, `i-lux` is `lb`, `art-lojban` is `jbo`, `sv-aaland` is `sv-AX`. The
+  rules apply until none matches, as UTS #35 says: `zh-cmn-yue` is `zh-yue`, then `yue`.
+  Where the replacement has no number data the tag raises `LookupError`, as any unknown
+  language does: `hy-arevmda` is Western Armenian (`hyw`) and `zh-hakka` is Hakka (`hak`), so neither
   reads Armenian or Chinese.
 - A tag without a script gets its likely one, from the region where it differs (`zh-TW`
   reads `zh-Hant`, `sr-ME` reads `sr-Latn-ME`), and then reads what that full form reads.
   Where the script has no data, that is the root, by the rule of the next point: `ku-GE` is
-  `ku-Cyrl-GE`, and `ky-CN`, `tg-PK` and `ug-KZ` likewise read `und`.
+  `ku-Cyrl-GE`, and `ky-CN`, `tg-PK` and `ug-KZ` likewise read `und`. A tag that names its
+  language's likely script gets no other: `ku-Latn-GE` reads `ku`, and `ky-Cyrl-CN` reads `ky`.
 - A locale without data of its own falls back through the CLDR parent locales, then by
   dropping subtags (`pt-FR` reads `pt-PT`, `de-AT-1996` reads `de-AT`). A language in a script
   other than its likely one falls back to the root, as CLDR's `nonlikelyScript` rule says
@@ -258,8 +260,10 @@ compares random values. They agree everywhere, `fr-CH` included: CLDR 48.2.0 gav
 apostrophe as its group symbol, where 48.0.0 inherited the narrow no-break space of `fr`, and
 ICU 78.3 carries the apostrophe. This library follows CLDR where Intl does not: it applies the
 `nonlikelyScript` rule (`ru-Latn` and `ku-GE` read the root, Intl reads `ru` and `ku`), and
-reads the legacy tags CLDR replaces (`zh-yue`, `no-bok`, `i-lux`), which Intl refuses. A tag that spells out
-its language's likely script, such as `de-Latn-AT`, reads `de-AT` here, as UTS #35 says the
-lookup starts without that script; Intl drops the region and reads `de`. One difference goes
-the other way: Intl follows CLDR's XML, which gives `en_US_POSIX` number data of its own, while
-this table comes from the CLDR JSON packages, which leave it out, so `en-US-POSIX` reads `en`.
+reads the legacy tags CLDR replaces (`zh-yue`, `no-bok`, `i-lux`), which Intl refuses. A tag
+that spells out its language's likely script, such as `de-Latn-AT`, reads `de-AT` here:
+UTS #35 starts the lookup of such a tag without its script, and adds no likely script for
+the region, so `ku-Latn-GE` reads `ku` while `ku-GE` reads the root. Intl drops the region
+and reads `de`. One difference goes the other way: Intl follows CLDR's XML, which gives
+`en_US_POSIX` number data of its own, while this table comes from the CLDR JSON packages,
+which leave it out, so `en-US-POSIX` reads `en`.

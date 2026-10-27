@@ -15,15 +15,14 @@ from ._bigint import to_decimal
 from ._digits import SPACE
 from ._locale import cldr_version, supported_locales
 from ._number import Grouping, format_number, parse_number
-from ._value import shown
+from ._value import MAX_DIGITS, shown
 
 __all__ = ["main"]
 
 _BOM = chr(0xFEFF)
-# Decimal's finite spellings in ASCII. The exponent is matched whole and its value capped
+# Decimal's finite spellings in ASCII. The exponent is matched whole and its value clamped
 # below, so its length never matters: the 100,000-digit bound of the library decides.
 _PLAIN = re.compile(r"([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))(?:[eE]([+-]?)([0-9]+))?")
-_EXPONENT_CAP = "999999999"  # past any bound, and within what Decimal can hold
 
 
 def _utf8(stream: TextIO | None, encoding: str = "utf-8", errors: str = "strict") -> None:
@@ -58,8 +57,12 @@ def _convert(value: str, args: Args) -> str:
         raise ValueError(f"not a plain number: {shown(value)}")
     mantissa, sign, exponent = match.group(1, 2, 3)
     exponent = (exponent or "0").lstrip("0") or "0"
-    if len(exponent) > len(_EXPONENT_CAP):
-        exponent = _EXPONENT_CAP
+    # Past this bound the value is zero or past the digit bound whatever the exponent, so the
+    # clamp changes no result; it keeps Decimal within its exponent limit, which is only
+    # 425,000,000 on a 32-bit build.
+    bound = str(MAX_DIGITS + len(mantissa) + 2)
+    if len(exponent) > len(bound) or int(exponent) > int(bound):
+        exponent = bound
     number = Decimal(f"{mantissa}e{sign or ''}{exponent}")
     return format_number(number, args.locale, grouping=cast(Grouping, args.grouping))
 

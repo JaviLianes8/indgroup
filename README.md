@@ -163,8 +163,10 @@ does not:
 - The legacy tags CLDR replaces read their replacement, such as `zh-yue` (`yue`), `no-bok`
   (`nb`) and `i-lux` (`lb`); Intl refuses them with `RangeError`.
 - A tag that spells out its language's likely script, such as `de-Latn-AT` or `en-Latn-IN`,
-  reads `de-AT` and `en-IN`, as UTS #35 says the lookup starts without that script; Intl
-  drops the region and reads `de` and `en`, so `de-Latn-AT` writes `-1.234.567,5` there.
+  reads `de-AT` and `en-IN`: UTS #35 starts the lookup of such a tag without its script, and
+  adds no likely script for the region, so `ku-Latn-GE` reads `ku` while `ku-GE` reads the
+  root. Intl drops the region and reads `de` and `en`, so `de-Latn-AT` writes `-1.234.567,5`
+  there.
 
 One difference goes the other way, where Intl follows CLDR and this library does not. The
 table holds the 766 locales of the CLDR JSON packages. CLDR's XML has one more with number

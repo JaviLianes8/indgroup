@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from indgroup import NumberSymbols, format_number, number_symbols, parse_number
+from indgroup import NumberSymbols, format_indian, format_number, number_symbols, parse_number
 
 NNBSP = "\u202f"
 NBSP = "\u00a0"
@@ -134,3 +134,31 @@ def test_subclasses_cannot_change_the_digits() -> None:
 
     assert format_number(Shown(1234), "en") == "1,234"
     assert format_number(Drifting(0.3), "en") == "0.3"
+
+
+class _Liar(int):
+    """An int whose arithmetic and byte methods lie about its value."""
+
+    def to_bytes(self, *args: object, **kwargs: object) -> bytes:
+        return int.to_bytes(7, 1, "big")
+
+    def bit_length(self) -> int:
+        return 3
+
+    def __neg__(self) -> int:
+        return 7
+
+    def __lt__(self, other: object) -> bool:
+        return False
+
+
+def test_int_subclass_methods_are_never_called() -> None:
+    assert format_indian(_Liar(12345678)) == "1,23,45,678"
+    assert format_number(_Liar(-12345678), "en") == "-12,345,678"
+    for plain in [12345678, -12345678, 7 * 10**5000 + 1, -(10**5001) - 3]:
+        liar = _Liar(plain)
+        assert format_indian(liar) == format_indian(plain)
+        assert format_number(liar, "en") == format_number(plain, "en")
+        assert format_number(liar, "de", grouping="off") == format_number(
+            plain, "de", grouping="off"
+        )

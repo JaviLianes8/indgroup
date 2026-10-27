@@ -3,11 +3,14 @@ bounded by the library's 100,000 digits rather than by the length of the exponen
 
 from __future__ import annotations
 
+import decimal
 import io
+import re
 import time
 
 import pytest
 
+from indgroup import _cli
 from indgroup._args import HELP
 from indgroup._cli import main
 
@@ -38,6 +41,8 @@ def error_of(capsys: pytest.CaptureFixture[str], *argv: str) -> str:
         (["1E+3", "1e-3", "-0.5E1"], "1,000\n0.001\n-5\n"),
         (["0e99999999999999999999"], "0\n"),
         (["-0e-0"], "-0\n"),
+        (["1e0000000005", "1e+0000000003", "7E00000000000000000002"], "1,00,000\n1,000\n700\n"),
+        (["--", "25e-0000000001", "-4E-00000000002"], "2.5\n-0.04\n"),
     ],
 )
 def test_every_plain_decimal_spelling_formats(argv: list[str], expected: str) -> None:
@@ -68,6 +73,32 @@ def test_values_past_the_digit_bound_say_so(
     capsys: pytest.CaptureFixture[str], value: str, part: str
 ) -> None:
     assert f"more than 100,000 digits in its {part}" in error_of(capsys, "--", value)
+
+
+def _decimal_of_a_32_bit_build(text: str) -> decimal.Decimal:
+    # libmpdec on a 32-bit build refuses an exponent past 425,000,000 with InvalidOperation.
+    exponent = re.search(r"[eE]([+-]?[0-9]+)$", text)
+    if exponent is not None and abs(int(exponent.group(1))) > 425_000_000:
+        raise decimal.InvalidOperation([decimal.InvalidOperation])
+    return decimal.Decimal(text)
+
+
+@pytest.mark.parametrize(
+    ("value", "part"),
+    [
+        ("1e500000000", "integer part"),
+        ("1e999999999", "integer part"),
+        ("1e-99999999999", "fraction"),
+        ("+.590E-896824052", "fraction"),
+        ("80E-156207682318855", "fraction"),
+    ],
+)
+def test_a_huge_exponent_stays_within_the_limits_of_a_32_bit_build(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, value: str, part: str
+) -> None:
+    monkeypatch.setattr(_cli, "Decimal", _decimal_of_a_32_bit_build)
+    assert f"more than 100,000 digits in its {part}" in error_of(capsys, "--", value)
+    assert run("--", "0e99999999999", "-0e999999999") == (0, "0\n-0\n")
 
 
 @pytest.mark.parametrize(

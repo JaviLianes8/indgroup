@@ -74,6 +74,23 @@ def test_other_extended_language_subtags_are_value_errors(tag: str) -> None:
         resolve_locale(tag)
 
 
+def test_the_rules_apply_until_none_matches() -> None:
+    # UTS #35 Annex C: zh-cmn is zh, then zh-yue is yue; zh-cmn-Hant-gan becomes gan-Hant.
+    assert resolve_locale("zh-cmn-yue") == resolve_locale("zh-guoyu-yue") == "yue"
+    for tag in ["zh-cmn-Hant-gan", "zh-cmn-GB-hakka"]:
+        with pytest.raises(LookupError):
+            resolve_locale(tag)
+    # Six rules in a row drop six legacy variants and leave the one with data.
+    chain = "ca-ES-arevela-bokmal-lojban-nynorsk-saaho-xiang-valencia"
+    assert resolve_locale(chain) == "ca-ES-valencia"
+
+
+def test_a_named_likely_script_skips_the_region_s_likely_script() -> None:
+    # ku-GE is ku-Cyrl-GE and reads the root; ku-Latn-GE names ku's own script and reads ku.
+    assert resolve_locale("ku-GE") == "und" and resolve_locale("ku-Latn-GE") == "ku"
+    assert resolve_locale("ky-CN") == "und" and resolve_locale("ky-Cyrl-CN") == "ky"
+
+
 def test_a_three_letter_subtag_after_the_script_is_an_unchecked_variant() -> None:
     assert resolve_locale("en-Latn-abc") == "en"
 

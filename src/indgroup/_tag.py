@@ -46,9 +46,12 @@ def _legacy(subtags: list[str]) -> list[str]:
     subtags all stand before the first extension. They are removed; the replacement's
     language takes the place of the tag's, and its script and region fill only what the tag
     leaves empty: ``zh-yue-HK`` is ``yue-HK``, ``sv-aaland`` is ``sv-AX``, ``sv-FI-aaland``
-    is ``sv-FI``.
+    is ``sv-FI``. As in UTS #35, the rules apply until none matches, so a replacement can
+    match a further rule: ``zh-cmn-yue`` is ``zh-yue``, then ``yue``.
     """
-    for _ in range(4):  # a replacement never matches a further rule; this is a guard
+    # A rule removes the subtags it matched, and no replacement brings back all of a rule's
+    # subtags, so each rule applies at most once and this bound is only a guard.
+    for _ in range(len(table()["tags"]) + 1):
         lowered = [part.lower() for part in subtags]
         end = next((at for at in range(1, len(lowered)) if len(lowered[at]) == 1), len(lowered))
         present = set(lowered[1:end])

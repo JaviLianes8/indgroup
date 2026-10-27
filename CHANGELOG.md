@@ -23,11 +23,12 @@ needs a new major version.
   way. `cldr_version()` returns `48.2.0`.
 - `resolve_locale` applies CLDR's language aliases of several subtags, keeping the tag's own
   script and region: `zh-yue-HK` reads `yue`, `zh-cmn-Hant` reads `zh-Hant`, `no-bok` reads
-  `nb`, `i-lux` reads `lb`, `art-lojban` reads `jbo` and `sv-aaland` reads `sv-AX`. In 0.2.0
-  these raised `ValueError` or `LookupError`, or read the wrong data. An alias whose
-  replacement has no number data raises `LookupError` instead of reading the data of the
-  tag's first subtag: `hy-arevmda` (Western Armenian) read `hy`, `zh-hakka` and `zh-xiang`
-  read `zh`. Other extended language subtags (`en-abc`) still raise `ValueError`.
+  `nb`, `i-lux` reads `lb`, `art-lojban` reads `jbo` and `sv-aaland` reads `sv-AX`. As UTS #35
+  says, the rules apply until none matches, so `zh-cmn-yue` reads `yue` (`zh-cmn` is `zh`, then
+  `zh-yue` is `yue`). In 0.2.0 these raised `ValueError` or `LookupError`, or read the wrong
+  data. An alias whose replacement has no number data raises `LookupError` instead of reading
+  the data of the tag's first subtag: `hy-arevmda` (Western Armenian) read `hy`, `zh-hakka`
+  and `zh-xiang` read `zh`. Other extended language subtags (`en-abc`) still raise `ValueError`.
 - A tag whose region's likely script differs from its language's and has no data reads what
   its full form reads, the root locale, as CLDR's likely subtags and `nonlikelyScript` rule
   say: `ku-GE` (`ku-Cyrl-GE`), `ku-AM`, `ku-AZ`, `ku-TM`, `ky-CN`, `ky-TR`, `tg-PK`, `ug-KZ`,
@@ -58,14 +59,17 @@ needs a new major version.
 - A deprecated region code with several replacements is replaced as UTS #35 says, by the
   language's likely region when listed, else the first one: `en-200` reads `en-CZ`,
   `ar-NT` reads `ar-SA`, `kk-SU` reads `kk-KZ`. 0.2.0 left such codes alone.
-- A tag that names its language's likely script reads the same locale as without it for
-  every language, not only those written in several scripts: `ru-Cyrl-UA` reads `ru-UA`
-  and `ca-Latn-ES-valencia` reads `ca-ES-valencia`.
+- A tag that names its language's likely script is looked up without that script, for every
+  language, not only those written in several scripts: `ru-Cyrl-UA` reads `ru-UA` and
+  `ca-Latn-ES-valencia` reads `ca-ES-valencia`. Its script is then known, so the region's
+  likely script is not added: `ku-Latn-GE` reads `ku`, where `ku-GE` stands for `ku-Cyrl-GE`
+  and reads the root.
 - The command line formats every finite plain spelling of a number in ASCII: `.5`, `-.5`,
   `5.` and exponents of any length, such as `1e10000`. 0.2.0 refused these as not a plain
   number, and refused exponents of more than four digits even where the value was within the
   digit bound. A value past the bound once its exponent is applied now gets the library's
-  error, `more than 100,000 digits`, and `--help` states the grammar.
+  error, `more than 100,000 digits`, on every build, 32-bit ones included, whose `Decimal`
+  holds exponents only up to 425,000,000; and `--help` states the grammar.
 - The command line reads its arguments without `argparse`, so it behaves the same on every
   Python version. An argument that starts with a minus followed by a digit or a point, such
   as `-1e5` or `-1.234,5`, is a value; before, Python 3.10 to 3.13 took it for an unknown
