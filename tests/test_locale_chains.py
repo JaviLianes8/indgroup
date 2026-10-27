@@ -74,6 +74,10 @@ def test_the_order_of_the_legacy_subtags_does_not_matter(head: str, tail: str) -
         "ja-aaland-abc",
         "ja-hepburn-heploc-abc",
         "sv-abc-FI-aaland",
+        "sv-ABC-aaland",
+        "sv-aaland-ABC",
+        "en-CMN-gb-oed",
+        "zh-Abc-cmn-hant",
     ],
 )
 def test_an_extended_language_subtag_the_rules_leave_is_a_value_error(tag: str) -> None:
@@ -134,14 +138,25 @@ def test_the_longest_chains_read_the_region_after_them(tag: str, expected: str, 
         ("sv-a1b-aaland", "sv-AX"),
         ("en-1ab-gb-oed", "en-GB"),
         ("zh-cmn-a1b-hant", "zh-Hant"),
+        ("sv-1996-aaland", "sv-AX"),
+        ("en-1abc-gb-oed", "en-GB"),
+        ("zh-cmn-1606-hant", "zh-Hant"),
     ],
 )
 def test_only_three_letters_the_rules_leave_first_are_an_extended_language_subtag(
     tag: str, expected: str
 ) -> None:
-    # A variant or a subtag with a digit left first by the rules stays among the variants,
-    # so the replacement's script or region still fills the tag's empty one.
+    # A variant or a subtag with a digit left first by the rules, of three or four characters,
+    # stays among the variants, so the replacement's script or region still fills the tag's
+    # empty one.
     assert resolve_locale(tag) == expected
+
+
+@pytest.mark.parametrize(("tag", "expected"), [("sv-1-aaland", "sv"), ("en-1-gb-oed", "en")])
+def test_a_digit_singleton_ends_the_subtags_the_rules_may_match(tag: str, expected: str) -> None:
+    # As with a letter singleton, what follows belongs to the extension, so no rule applies.
+    assert resolve_locale(tag) == expected
+    assert resolve_locale("zh-1-cmn-hant") == "zh"
 
 
 @pytest.mark.parametrize("tag", ["es-419-aaland", "es-aaland-419"])

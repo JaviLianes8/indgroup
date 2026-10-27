@@ -46,10 +46,10 @@ def _legacy(subtags: list[str]) -> list[str]:
     subtags all stand before the first extension. Every occurrence of them is removed and the
     replacement's language takes the place of the tag's. What the tag has left is read as a
     tag: its own extended language, script and region stay first, a variant or a subtag with a
-    digit is not an extended language, the replacements' script and region fill only what it
-    leaves empty and their variants follow its own: ``zh-yue-HK`` is ``yue-HK``, ``sv-aaland``
-    is ``sv-AX``, ``sv-FI-aaland`` is ``sv-FI``, ``be-arevela-Latn`` is ``be-Latn`` and
-    ``be-abc-aaland`` is ``be-abc-AX``, which ``parse_tag`` refuses. As in
+    digit is neither an extended language nor a script, the replacements' script and region
+    fill only what it leaves empty and their variants follow its own: ``zh-yue-HK`` is
+    ``yue-HK``, ``sv-aaland`` is ``sv-AX``, ``sv-FI-aaland`` is ``sv-FI``, ``be-arevela-Latn``
+    is ``be-Latn`` and ``be-abc-aaland`` is ``be-abc-AX``, which ``parse_tag`` refuses. As in
     UTS #35, the rules apply until none matches, so a replacement can match a further rule:
     ``zh-cmn-yue`` is ``zh-yue``, then ``yue``. Since the tag's own subtags and the
     replacements' are kept apart until the end, a chain of rules reads like one rule.
