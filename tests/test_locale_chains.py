@@ -16,7 +16,8 @@ import pytest
 from indgroup import format_number, resolve_locale
 
 VALUE = Decimal("-1234567.5")
-RULES = ["aaland", "arevela", "hepburn-heploc", "bokmal"]
+RULES = ["aaland", "arevela", "hepburn-heploc", "bokmal", "gb-oed"]
+UND = "hepburn-heploc-aaland-arevela-arevmda-bokmal-hakka-lojban-nynorsk-saaho-xiang"
 
 
 def _read(tag: str) -> str:
@@ -54,7 +55,7 @@ def test_the_script_the_rules_uncover_is_the_tag_s_script() -> None:
         assert format_number(VALUE, tag) == format_number(VALUE, "und")
 
 
-@pytest.mark.parametrize("head", ["be", "sv", "ca-ES", "ja", "be-abc"])
+@pytest.mark.parametrize("head", ["be", "sv", "ca-ES", "ja", "be-abc", "en"])
 @pytest.mark.parametrize("tail", ["", "Latn", "FI", "valencia", "abc", "x-abc"])
 def test_the_order_of_the_legacy_subtags_does_not_matter(head: str, tail: str) -> None:
     for count in (1, 2, 3):
@@ -94,3 +95,31 @@ def test_an_extended_language_subtag_a_rule_consumes_is_read(
             resolve_locale(tag)
     else:
         assert resolve_locale(tag) == expected
+
+
+@pytest.mark.parametrize("tag", ["en-gb-oed-aaland", "en-aaland-gb-oed", "en-GB-oed-aaland"])
+def test_the_region_of_the_first_rule_applied_wins(tag: str) -> None:
+    # en-gb-oed, a rule of en, applies before und-aaland: its GB stays and aaland's AX is
+    # dropped, wherever the subtags stand.
+    assert resolve_locale(tag) == "en-GB"
+
+
+@pytest.mark.parametrize("tag", ["zh-cmn-Hant-419", "zh-419-cmn-hant", "zh-Hant-419-cmn"])
+def test_a_numeric_region_the_rules_leave_is_not_an_extended_language_subtag(tag: str) -> None:
+    # The rule brings the script and leaves 419 first: a region, so Hant still fills the script.
+    assert resolve_locale(tag) == "zh-Hant"
+
+
+@pytest.mark.parametrize(
+    ("tag", "expected", "text"),
+    [
+        (f"sv-{UND}-FI", "sv-FI", "\u22121\xa0234\xa0567,5"),
+        (f"en-gb-oed-{UND}-FI", "en-FI", "-1\xa0234\xa0567,5"),
+        (f"i-default-gb-oed-{UND}-FI", "en-FI", "-1\xa0234\xa0567,5"),
+    ],
+)
+def test_the_longest_chains_read_the_region_after_them(tag: str, expected: str, text: str) -> None:
+    # Ten, eleven and twelve rules: i-default, en-gb-oed and the ten rules of und. The tag's own
+    # region wins wherever it stands, so the effect of every rule before it shows.
+    assert resolve_locale(tag) == expected
+    assert format_number(VALUE, tag) == text
