@@ -24,6 +24,7 @@ Progress:
 - [x] QA round 5: five fresh lenses at 9ef91df reported 13 findings, every one fixed in 3a01f33 (see QA)
 - [x] QA round 6: lenses a, c and e re-checked round 5 and reported 5 findings, every one fixed in 8fea04c (see QA)
 - [x] QA round 7: lens e re-checked round 6 and reported 3 findings, every one fixed in ec8a8e7 (see QA)
+- [x] QA round 8: lens e re-checked round 7 and reported 2 findings, both fixed in a10bba6 (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -559,6 +560,49 @@ Runs at ec8a8e7:
   branch, a turn taken): exit 0, every test passed, doctests included, and 16 skipped there
   (no Node, no POSIX shell, the opt-in installed-wheel test, no fetched reference files).
 - CPython 3.13.2 on this PC: the two changed test files pass.
+
+### Round 8 (2026-10-27, at 1e103c2)
+
+Lens e re-checked round 7 at 1e103c2. Its three round 7 findings are fixed: each re-applied
+mutant is killed, locally and in the full suite. It ran 10 new mutants on `_cli._convert` and
+`_tag._legacy`: 8 killed, 1 proven equivalent and 1 surviving and not equivalent, which it
+reported with a second, related finding. None is disputed. Both are behaviour bugs in how
+`_tag._legacy` rebuilt the tag between two rules, fixed in a10bba6 with the contract tests
+first; the CHANGELOG and GUIDE state the new behaviour.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| e-N4-M09 | low | Each rule used to rebuild the tag with the replacement's variants in front of the subtags the tag had left, so the next rule read the tag's own script or region as a variant: `be-arevela-Latn` read `und` (`be-Latn`) but `be-arevela-hepburn-heploc-Latn` read `be`, and `ja-arevela-abc` raised `ValueError` but `ja-hepburn-heploc-abc` read `ja`. `_legacy` now keeps the tag's own subtags and the replacements' apart until no rule matches, then reads what the tag has left as a tag (its own script and region first) and adds the replacements' script and region where it has none and their variants after its own. A chain of rules now reads what one rule does, in any order. On the lens's 2,432 probe tags, 340 change: 300 now raise `ValueError` (the extended language subtag of e-N5-X01) and 40 chains now read their single-rule result (`be-arevela-hepburn-heploc-Latn` reads `und`, `sv-aaland-arevela-US` reads `sv`, `zh-arevela-aaland-US` reads `zh-Hant`); Node 24.18 with ICU 78.3 rejects all 340 with `RangeError`, so only tags BCP 47 calls ill-formed change. Tests: `test_locale_chains::test_a_chain_of_rules_reads_what_one_rule_reads`, `test_the_script_the_rules_uncover_is_the_tag_s_script` (both fail on 1e103c2) and `test_the_order_of_the_legacy_subtags_does_not_matter` |
+| e-N5-X01 | low | An extended language subtag was accepted when a legacy rule matched later in the tag, because the rule's region or variant landed in front of it: `be-abc-aaland` read `be`, `sv-abc-aaland` read `sv-AX`, `en-abc-gb-oed` read `en-GB`, `ja-abc-hepburn-heploc` read `ja`. The fix of e-N4-M09 keeps a three-letter subtag that follows the language once the rules have removed theirs in that place, so `parse_tag` refuses it as it refuses `be-abc`; one a rule consumes (`zh-yue-HK`, `zh-cmn-yue`, `zh-min-nan`) is still read. The same holds for one the rules uncover: `ja-aaland-abc` is `ja-abc` with the region `AX` and now raises `ValueError` as `ja-arevela-abc` did. Tests: the four tags of the finding join `test_locale_aliases::test_other_extended_language_subtags_are_value_errors`, and `test_locale_chains::test_an_extended_language_subtag_the_rules_leave_is_a_value_error` and `test_an_extended_language_subtag_a_rule_consumes_is_read` pin the rest; the new cases fail on 1e103c2 |
+
+Mutation check, one mutant at a time on this PC (CPython 3.13.2, bytecode writing off),
+running the changed test files:
+
+| Mutant | First catcher |
+| --- | --- |
+| e-N5-X01: no slot for the extended language subtag (`extended = []`) | `test_locale_chains::test_an_extended_language_subtag_the_rules_leave_is_a_value_error[ja-aaland-abc]` |
+| e-N5-X01: the extended language subtag placed after the script and region | `test_locale_chains::test_an_extended_language_subtag_the_rules_leave_is_a_value_error[ja-aaland-abc]` |
+| e-N4-M09: the replacements merged into the tag after each rule (the 1e103c2 model) | `test_locale_aliases::test_a_replacement_of_und_names_the_root_and_the_tag_keeps_its_fields` |
+| e-N4-M09: the script the rules uncover ignored | `test_locale_chains::test_the_script_the_rules_uncover_is_the_tag_s_script` |
+| e-N4-M09 analogue: the replacements' variants before the tag's own | equivalent, see below |
+
+The last mutant only swaps the order of two kinds of variant, so it changes a result only for
+a tag that has both, that is two or more variants. `resolve_locale` looks a variant up only as
+the whole joined list (`base-v1-v2`), and every CLDR 48.2 locale with a variant has exactly
+one (`be-tarask`, `ca-ES-valencia`, `el-polyton`), so such a tag falls back to its base either
+way. Run on the lens's 2,432 probe tags, the mutant and a10bba6 give 0 differences in
+`resolve_locale` and `format_number`.
+
+Runs at a10bba6:
+
+- Gates on this PC: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0. No source file is over 200 lines.
+- Full suite on Elena's PC (CPython 3.14, a clean venv on a fresh clone of the pushed branch,
+  a turn taken): exit 0, 591 passed, doctests included, and 16 skipped there (no Node with
+  ICU 78.3, no POSIX shell, the opt-in installed-wheel test, no fetched reference files).
+- CPython 3.13.2 on this PC, with Node 24.18 (ICU 78.3) and the fetched reference files:
+  `test_sources`, `test_oracle_intl`, `test_intl`, `test_docs` and the two changed test files
+  pass with no skip (130 passed).
 
 ### Disputed findings
 
