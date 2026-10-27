@@ -22,6 +22,7 @@ Progress:
 - [x] QA round 4: lens d re-checked round 3, its new finding fixed (see QA)
 - [x] Suite, gates, packages and matrix re-verified at b63f709 (see Matrix, packaging and gates)
 - [x] QA round 5: five fresh lenses at 9ef91df reported 13 findings, every one fixed in 3a01f33 (see QA)
+- [x] QA round 6: lenses a, c and e re-checked round 5 and reported 5 findings, every one fixed in 8fea04c (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -485,6 +486,43 @@ Runs at 3a01f33 (the fix commit), on this PC:
   stayed busy with other work for this session (`recurso.sh ver`), so it is left to lens
   d's re-check. The new code uses only what 3.10 has (`int.to_bytes` with a positional byte
   order, `decimal.MAX_PREC`, builtin generics at run time).
+
+### Round 6 (2026-10-27, at 1e6503a)
+
+Lenses a, c and e re-checked round 5 at 1e6503a. Every round 5 finding they re-ran is fixed
+(lens a: F1 to F3; lens c: F1, with 100,000 digits now 66.7 ms to parse and 29.5 ms to
+format on a desktop; lens e: F1 to F5, each old mutant killed). They reported 5 new findings:
+a: 1, c: 1, e: 3. None is disputed. All are fixed in 8fea04c, the contract tests first.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| a-N1 | low | Docs only; the behaviour already matched CLDR. The CHANGELOG no longer says a tag that names its language's likely script reads the same locale as without it: it is looked up without that script, and since its script is known, the region's likely script is not added, so `ku-Latn-GE` reads `ku` while `ku-GE` (`ku-Cyrl-GE`) reads the root. README and GUIDE give the same reason, and the GUIDE likely-script rule names `ku-Latn-GE` and `ky-Cyrl-CN`. Test: `test_locale_aliases::test_a_named_likely_script_skips_the_region_s_likely_script` |
+| c-N1 | medium | A regression from 9ef91df: on a 32-bit CPython, whose `decimal.MAX_EMAX` is 425,000,000, an exponent past that crashed the command line with `InvalidOperation` and status 1. `_cli._convert` now clamps the exponent to 100,000 plus the length of the mantissa plus 2 instead of capping it at nine digits. Past that clamp the value is zero or past the digit bound whatever the exponent, so no result changes (12,000 seeded spellings near and past the bound give the same output or error as the old cap on 64-bit), and the exponent stays far inside every build's limit. On the 32-bit CPython 3.13.11 of lens c, `1e500000000`, `1e999999999`, `1e99999999999`, `1e-99999999999`, `+.590E-896824052` and `80E-156207682318855` now exit 2 with one line, by argv and by stdin, and `0e99999999999` prints `0`. CHANGELOG states it. Test: `test_cli_values::test_a_huge_exponent_stays_within_the_limits_of_a_32_bit_build`, which swaps in a `Decimal` with the 32-bit exponent limit: 5 failures on 1e6503a, all pass after |
+| e-N1 | medium | `test_number::test_int_subclass_methods_are_never_called`: an int subclass whose `to_bytes`, `bit_length`, `__neg__` and `__lt__` lie formats like the plain int through `format_indian` and `format_number`, short, negative and past 4,300 digits |
+| e-N2 | low | `test_cli_values::test_every_plain_decimal_spelling_formats`: exponents of ten or more characters, mostly leading zeros, unsigned, `+` and `-` (`1e0000000005`, `1e+0000000003`, `7E00000000000000000002`, `25e-0000000001`, `-4E-00000000002`) |
+| e-N3 | low | The comment was false and the loop stopped after four rules. UTS #35 applies the alias rules until none matches, and a tag with more legacy variants needed more passes: `ca-ES-arevela-bokmal-lojban-nynorsk-saaho-xiang-valencia` read `ca` instead of `ca-ES-valencia`. `_tag._legacy` now loops until no rule matches. A rule removes the subtags it matched and no replacement brings them all back, so each rule applies at most once, and the bound of one pass per rule is only a guard. The docstring, GUIDE and CHANGELOG say the rules chain (`zh-cmn-yue` is `zh-yue`, then `yue`). Test: `test_locale_aliases::test_the_rules_apply_until_none_matches` (`zh-cmn-yue`, `zh-guoyu-yue`, `zh-cmn-Hant-gan`, `zh-cmn-GB-hakka` and the six-rule chain): it fails on 1e6503a and passes after |
+
+Mutation check, one mutant at a time on this PC (CPython 3.13.2, bytecode writing off):
+
+| Mutant | First catcher |
+| --- | --- |
+| e-N1: `to_decimal(int.__int__(value))` to `to_decimal(value)` | `test_number::test_int_subclass_methods_are_never_called` |
+| e-N2: exponent leading zeros no longer stripped | `test_cli_values::test_every_plain_decimal_spelling_formats[argv8-...]` |
+| e-N3: legacy rules applied once (`range(1)`) | `test_locale_aliases::test_the_rules_apply_until_none_matches` |
+| e-N3: legacy rules applied at most four times (the 1e6503a loop) | `test_locale_aliases::test_the_rules_apply_until_none_matches` |
+| c-N1: the 1e6503a nine-digit cap | `test_cli_values::test_a_huge_exponent_stays_within_the_limits_of_a_32_bit_build[1e500000000-...]` |
+
+Runs at 8fea04c:
+
+- Gates on this PC: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0. No source file is over 200 lines.
+- Full suite on Elena's PC (CPython 3.14, a clean venv on a copy of the tracked files, a turn
+  taken): every test passed, doctests included, and 18 skipped there (no Node, no git
+  checkout, no POSIX shell, the opt-in installed-wheel test, no fetched reference files).
+- CPython 3.13.2 on this PC, with Node 24.18 and the fetched reference files: the doctests,
+  the changed test files and the files Elena skipped (`test_cli_streams`, `test_docs`,
+  `test_oracle_intl`, `test_intl`, `test_sources`) pass.
+- The 32-bit CPython 3.13.11 (lens c's interpreter): the CLI cases of c-N1 above.
 
 ### Disputed findings
 
