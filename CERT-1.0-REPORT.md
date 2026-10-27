@@ -23,6 +23,7 @@ Progress:
 - [x] Suite, gates, packages and matrix re-verified at b63f709 (see Matrix, packaging and gates)
 - [x] QA round 5: five fresh lenses at 9ef91df reported 13 findings, every one fixed in 3a01f33 (see QA)
 - [x] QA round 6: lenses a, c and e re-checked round 5 and reported 5 findings, every one fixed in 8fea04c (see QA)
+- [x] QA round 7: lens e re-checked round 6 and reported 3 findings, every one fixed in ec8a8e7 (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -523,6 +524,41 @@ Runs at 8fea04c:
   the changed test files and the files Elena skipped (`test_cli_streams`, `test_docs`,
   `test_oracle_intl`, `test_intl`, `test_sources`) pass.
 - The 32-bit CPython 3.13.11 (lens c's interpreter): the CLI cases of c-N1 above.
+
+### Round 7 (2026-10-27, at d95a548)
+
+Lens e re-checked round 6 at d95a548. Its three round 6 findings are fixed: each re-applied
+mutant is killed. It ran 20 new mutants on `_cli._convert` and `_tag._legacy`: 12 killed, 5
+proven equivalent, 3 surviving and not equivalent, reported as 3 findings. None is disputed.
+All three are missing contracts, not behaviour bugs: the code already gave the right result,
+so no source file and no documented behaviour changes, and the CHANGELOG has nothing to add.
+The new tests are in ec8a8e7.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| e-N1-K03 | low | `test_cli_values::test_values_past_the_digit_bound_say_so` gains `.0001e100005`, `-.001e100004` and `+.001e100003`: leading fractional zeros put them past the bound only through an exponent past 100,002, so they pin that the exponent clamp counts the mantissa's length. Each exits 2 with the integer-part error |
+| e-N2-K10 | low | `test_cli_values::test_values_at_the_digit_bound_written_with_an_exponent_as_long_as_the_bound`: `1e-100000`, `0.001e100002`, `0.1e100000` and `-.1e100000` exit 0 and print exactly 100,000 digits in the fraction or the integer part, ungrouped and grouped |
+| e-N3-L02 | low | `test_locale_aliases::test_the_rules_apply_until_none_matches` pins the longest visible chain, nine rules (`ca-ES-aaland-arevela-arevmda-bokmal-hakka-lojban-nynorsk-saaho-xiang-valencia` reads `ca-ES-valencia`), and a seven-rule chain before be's own variant (`be-arevela-arevmda-bokmal-hakka-lojban-nynorsk-saaho-tarask` reads `be-tarask`) |
+
+Mutation check, one mutant at a time on this PC (CPython 3.13.2, bytecode writing off),
+running the changed test file:
+
+| Mutant | First catcher |
+| --- | --- |
+| e-N1-K03: `bound = str(MAX_DIGITS + 2)` | `test_cli_values::test_values_past_the_digit_bound_say_so[.0001e100005-integer part]` |
+| e-N2-K10: `len(exponent) >= len(bound)` | `test_cli_values::test_values_at_the_digit_bound_written_with_an_exponent_as_long_as_the_bound[1e-100000]` |
+| e-N3-L02: legacy rules applied at most six times (`range(6)`) | `test_locale_aliases::test_the_rules_apply_until_none_matches` |
+| e-N3-L02: at most seven times (`range(7)`) | `test_locale_aliases::test_the_rules_apply_until_none_matches` |
+| e-N3-L02: at most eight times (`range(8)`) | `test_locale_aliases::test_the_rules_apply_until_none_matches` |
+
+Runs at ec8a8e7:
+
+- Gates on this PC: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0. No source file is over 200 lines.
+- Full suite on Elena's PC (CPython 3.14.2, a clean venv on a fresh clone of the pushed
+  branch, a turn taken): exit 0, every test passed, doctests included, and 16 skipped there
+  (no Node, no POSIX shell, the opt-in installed-wheel test, no fetched reference files).
+- CPython 3.13.2 on this PC: the two changed test files pass.
 
 ### Disputed findings
 
