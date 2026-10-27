@@ -83,6 +83,11 @@ def test_the_rules_apply_until_none_matches() -> None:
     # Six rules in a row drop six legacy variants and leave the one with data.
     chain = "ca-ES-arevela-bokmal-lojban-nynorsk-saaho-xiang-valencia"
     assert resolve_locale(chain) == "ca-ES-valencia"
+    # The longest chains whose effect shows: nine rules, and seven before be's own variant.
+    longest = "ca-ES-aaland-arevela-arevmda-bokmal-hakka-lojban-nynorsk-saaho-xiang-valencia"
+    assert resolve_locale(longest) == "ca-ES-valencia"
+    seven = "be-arevela-arevmda-bokmal-hakka-lojban-nynorsk-saaho-tarask"
+    assert resolve_locale(seven) == "be-tarask"
 
 
 def test_a_named_likely_script_skips_the_region_s_likely_script() -> None:

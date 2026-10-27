@@ -67,12 +67,35 @@ def test_the_exponent_is_bounded_by_the_digits_it_makes() -> None:
         ("1e-100001", "fraction"),
         ("-1e-" + "9" * 30, "fraction"),
         ("0e-100001", "fraction"),
+        # Leading fractional zeros put these past the bound only through an exponent past
+        # MAX_DIGITS + 2, so the exponent clamp must leave room for the mantissa's length.
+        (".0001e100005", "integer part"),
+        ("-.001e100004", "integer part"),
+        ("+.001e100003", "integer part"),
     ],
 )
 def test_values_past_the_digit_bound_say_so(
     capsys: pytest.CaptureFixture[str], value: str, part: str
 ) -> None:
     assert f"more than 100,000 digits in its {part}" in error_of(capsys, "--", value)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("1e-100000", "0." + "0" * 99_999 + "1\n"),
+        ("0.001e100002", "1" + "0" * 99_999 + "\n"),
+        ("0.1e100000", "1" + "0" * 99_999 + "\n"),
+        ("-.1e100000", "-1" + "0" * 99_999 + "\n"),
+    ],
+    ids=["1e-100000", "0.001e100002", "0.1e100000", "-.1e100000"],
+)
+def test_values_at_the_digit_bound_written_with_an_exponent_as_long_as_the_bound(
+    value: str, expected: str
+) -> None:
+    assert run("-l", "en", "-g", "off", "--", value) == (0, expected)
+    status, out = run("-l", "en", "--", value)
+    assert status == 0 and out.replace(",", "") == expected
 
 
 def _decimal_of_a_32_bit_build(text: str) -> decimal.Decimal:
