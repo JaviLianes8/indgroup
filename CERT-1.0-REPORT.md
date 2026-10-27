@@ -25,6 +25,7 @@ Progress:
 - [x] QA round 6: lenses a, c and e re-checked round 5 and reported 5 findings, every one fixed in 8fea04c (see QA)
 - [x] QA round 7: lens e re-checked round 6 and reported 3 findings, every one fixed in ec8a8e7 (see QA)
 - [x] QA round 8: lens e re-checked round 7 and reported 2 findings, both fixed in a10bba6 (see QA)
+- [x] QA round 9: lens e re-checked round 8 and reported 3 findings, every one fixed in c84b46b (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -603,6 +604,46 @@ Runs at a10bba6:
 - CPython 3.13.2 on this PC, with Node 24.18 (ICU 78.3) and the fetched reference files:
   `test_sources`, `test_oracle_intl`, `test_intl`, `test_docs` and the two changed test files
   pass with no skip (130 passed).
+
+### Round 9 (2026-10-27, at c2c5676)
+
+Lens e re-checked round 8 at c2c5676. Its two round 8 findings are fixed: every repro tag of
+e-N4-M09 now reads one value, every repro tag of e-N5-X01 raises `ValueError`, and their
+analogues in the new code are killed or proven equivalent (the replacements' variants before
+the tag's own: 0 differences over 167,036 probe tags). It ran 35 new mutants on
+`_tag._legacy` and `_tag.parse_tag` on Elena's PC (baseline 597 passed): 27 killed, 4 proven
+equivalent on the CLDR 48.2 table and 4 surviving and not equivalent, reported as 3 findings.
+None is disputed. All three are missing contracts, not behaviour bugs: the code already gave
+the results the lens asked to pin, so no source file and no documented behaviour changes, and
+the CHANGELOG has nothing to add. The new tests are in c84b46b.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| N6-T13 | low | `test_locale_chains::test_the_region_of_the_first_rule_applied_wins`: `en-gb-oed-aaland`, `en-aaland-gb-oed` and `en-GB-oed-aaland` read `en-GB`. `en-gb-oed`, a rule of `en`, applies before `und-aaland`, so its `GB` stays and `AX` is dropped. `gb-oed` joins the rules of `test_the_order_of_the_legacy_subtags_does_not_matter` and `en` its heads, so the order test now has a pair of rules whose replacements both carry a region |
+| N6-T15 | low | `test_locale_chains::test_a_numeric_region_the_rules_leave_is_not_an_extended_language_subtag`: `zh-cmn-Hant-419`, `zh-419-cmn-hant` and `zh-Hant-419-cmn` read `zh-Hant`. The rule brings the script and leaves the three-digit region first, which must stay a region and not be taken for an extended language subtag |
+| N6-T27 | low | `test_locale_chains::test_the_longest_chains_read_the_region_after_them` pins chains of 10, 11 and 12 rules (`UND` being the ten rules of `und`): `sv-{UND}-FI` reads `sv-FI`, `en-gb-oed-{UND}-FI` and `i-default-gb-oed-{UND}-FI` read `en-FI`, and the `en` ones format `-1 234 567,5` with no-break spaces. The comment in `test_locale_aliases::test_the_rules_apply_until_none_matches` no longer calls nine rules the longest visible chain: the tag's own region wins wherever it stands, so a region after a chain shows every rule before it, and the longest chain is 12 rules |
+
+Mutation check, one mutant at a time on this PC (CPython 3.13.2, bytecode writing off) on a
+copy of the tree, running `test_locale_chains` and `test_locale_aliases`:
+
+| Mutant | First catcher |
+| --- | --- |
+| N6-T13: `added = extra + [part for part in added if part.lower() not in need]` | `test_locale_chains::test_the_region_of_the_first_rule_applied_wins[en-gb-oed-aaland]` |
+| N6-T15: `isalpha` dropped from the extended language subtag split | `test_locale_chains::test_a_numeric_region_the_rules_leave_is_not_an_extended_language_subtag[zh-cmn-Hant-419]` |
+| N6-T27: legacy rules applied at most nine times (`range(9)`) | `test_locale_chains::test_the_longest_chains_read_the_region_after_them[sv-...-FI]` |
+| N6-T27: at most ten times (`range(10)`) | `test_locale_chains::test_the_longest_chains_read_the_region_after_them[en-gb-oed-...-FI]` |
+| N6-T27: at most eleven times (`range(11)`) | `test_locale_chains::test_the_longest_chains_read_the_region_after_them[i-default-gb-oed-...-FI]` |
+
+Runs at c84b46b:
+
+- Gates on this PC: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0. No source file is over 200 lines.
+- Full suite on Elena's PC (CPython 3.14, a clean venv on a fresh clone of the pushed branch,
+  a turn taken): exit 0, 606 passed, doctests included, and 16 skipped there (no Node with
+  ICU 78.3, no POSIX shell, the opt-in installed-wheel test, no fetched reference files).
+- CPython 3.13.2 on this PC, with Node 24.18 (ICU 78.3) and the fetched reference files:
+  `test_sources`, `test_oracle_intl`, `test_intl`, `test_docs` and the two changed test files
+  pass with no skip (145 passed).
 
 ### Disputed findings
 
