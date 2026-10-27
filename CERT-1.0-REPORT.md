@@ -730,6 +730,51 @@ Runs at 12b7bc5:
   `test_sources`, `test_oracle_intl`, `test_intl`, `test_docs` and `test_locale_chains` pass
   with no skip (101 passed).
 
+### Round 12 (2026-10-27, at 4f8928e)
+
+Lens e re-checked round 11 at 4f8928e. Its three round 11 findings are fixed: N8-U03 is killed
+by `test_an_extended_language_subtag_the_rules_leave_is_a_value_error[sv-ABC-aaland]`, N8-U04 by
+`test_a_digit_singleton_ends_the_subtags_the_rules_may_match[sv-1-aaland-sv]` and N8-U09 by
+`test_only_three_letters_the_rules_leave_first_are_an_extended_language_subtag[sv-1996-aaland-sv-AX]`.
+As only the docstring of `_legacy` changed in `src` since round 10, it capped its sweep at 10
+mutants on `_tag._legacy`, run on Elena's PC (CPython 3.14, `INDGROUP_E2E=1`, baseline 625
+passed, 17 skipped): 7 killed, 1 proven equivalent (the replacement's variants placed before
+the tag's own: 0 differences over 824,065 probe tags and the 808 oracle inputs, as the only
+CLDR locales with a variant have one each) and 2 surviving and not equivalent, reported as
+E8-N03 and E8-N04. None is disputed. Both are missing contracts, not behaviour bugs: the code
+already gave the results the lens asked to pin, and Node 24.18 (ICU 78.3) agrees on the script
+and region kept (`Intl.getCanonicalLocales` reads `sr-latn-aaland` as `sr-Latn-AX` and
+`sv-fi-aaland` as `sv-FI`; it refuses `sv-aaland-fi`, `es-aaland-mx` and `zh-hant-cmn-hans`,
+whose region or script follows a variant, which BCP 47 does not allow, while this library reads
+the legacy subtags in any order). So no behaviour changes and the CHANGELOG has nothing to add.
+GUIDE.md now says the tag's own script and region win in any case. The fix is in c3c7c39.
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| E8-N03 | low | `test_locale_chains::test_a_lower_case_script_or_region_the_rules_leave_first_is_the_tag_s_own`: `sr-latn-aaland` reads `sr-Latn`, `zh-hant-cmn-hans` reads `zh-Hant` and `be-aaland-arevela-latn` reads `und`, each formatting as the expected locale does. A lower-case script the rules leave first is the tag's script, so the replacement's script does not take its place |
+| E8-N04 | low | The same test: `sv-fi-aaland` and `sv-aaland-fi` read `sv-FI` and `es-aaland-mx` reads `es-MX` (`-1.234.567,5`). A lower-case region the rules leave first is the tag's region, not a variant, so the region a rule brings does not replace it |
+
+Mutation check, one mutant at a time on this PC (CPython 3.13.2) on a copy of the tree,
+running `test_locale_chains` (the unmutated copy passes, and each mutant fails only the new
+test):
+
+| Mutant | First catcher |
+| --- | --- |
+| E8-N03: only a script in upper case first is the tag's own (`and own[0][0].isupper()`) | `test_locale_chains::test_a_lower_case_script_or_region_the_rules_leave_first_is_the_tag_s_own[sr-latn-aaland-sr-Latn]` |
+| E8-N04: a region in lower case is not the tag's own (`and not own[0].islower()`) | `test_locale_chains::test_a_lower_case_script_or_region_the_rules_leave_first_is_the_tag_s_own[sv-fi-aaland-sv-FI]` |
+
+Runs at c3c7c39:
+
+- Gates on this PC: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0. No source file is over 200 lines.
+- Full suite on Elena's PC (CPython 3.14, a clean venv on a fresh clone of the pushed branch,
+  `INDGROUP_E2E=1`, pytest-timeout 300 s, a turn taken): exit 0, 633 passed, doctests and the
+  installed-wheel test included, and 15 skipped there (no Node with ICU 78.3, no POSIX shell,
+  no fetched reference files).
+- CPython 3.13.2 on this PC, with Node 24.18 (ICU 78.3) and the fetched reference files:
+  `test_sources`, `test_oracle_intl`, `test_intl`, `test_docs` and `test_locale_chains` pass
+  with no skip (107 passed).
+
 ### Disputed findings
 
 None.
