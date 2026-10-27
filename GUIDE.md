@@ -85,7 +85,8 @@ sign, and for Persian a left-to-right mark before it.
   or a digit: in `sv-1-aaland`, `aaland` belongs to the extension, so the tag reads `sv`.
   A rule removes every occurrence of the subtags it matched (`no-bok-bok` is `nb`), and what
   the tag has left is read as a tag: its own script and region win wherever they stand in it
-  (`es-aaland-419` is `es-419`), and the replacement's variants follow the tag's own. A variant
+  and in any case (`es-aaland-419` is `es-419`, `sv-fi-aaland` is `sv-FI`, `sr-latn-aaland` is
+  `sr-Latn`), and the replacement's variants follow the tag's own. A variant
   or a subtag with a digit that the rules leave first is neither an extended language subtag
   nor a script: `sv-aaland-valencia`, `sv-a1b-aaland` and `sv-1996-aaland` are `sv-AX`.
   So `be-arevela-Latn` is `be-Latn` (the root), and a chain of rules reads what one rule

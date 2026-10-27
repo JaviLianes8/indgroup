@@ -175,3 +175,22 @@ def test_a_repeated_region_a_rule_matched_does_not_stay_behind() -> None:
     # en-gb-oed removes both GB and gb, so cmn is left first: an extended language subtag.
     with pytest.raises(ValueError, match="extended language subtags are not supported"):
         resolve_locale("en-GB-gb-oed-cmn")
+
+
+@pytest.mark.parametrize(
+    ("tag", "expected"),
+    [
+        ("sr-latn-aaland", "sr-Latn"),
+        ("zh-hant-cmn-hans", "zh-Hant"),
+        ("be-aaland-arevela-latn", "und"),
+        ("sv-fi-aaland", "sv-FI"),
+        ("sv-aaland-fi", "sv-FI"),
+        ("es-aaland-mx", "es-MX"),
+    ],
+)
+def test_a_lower_case_script_or_region_the_rules_leave_first_is_the_tag_s_own(
+    tag: str, expected: str
+) -> None:
+    # Case does not matter, so the replacement's script or region still fills only an empty one.
+    assert resolve_locale(tag) == expected
+    assert format_number(VALUE, tag) == format_number(VALUE, expected)
