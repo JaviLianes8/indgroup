@@ -65,7 +65,14 @@ def test_rejects_bool_and_other_types() -> None:
 
 
 def test_rejects_non_finite_values() -> None:
-    for bad in [Decimal("NaN"), Decimal("sNaN"), Decimal("Infinity"), float("inf"), float("nan")]:
+    bad_values: list[Decimal | float] = [
+        Decimal("NaN"),
+        Decimal("sNaN"),
+        Decimal("Infinity"),
+        float("inf"),
+        float("nan"),
+    ]
+    for bad in bad_values:
         with pytest.raises(ValueError):
             format_indian(bad)
 

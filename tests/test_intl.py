@@ -12,24 +12,11 @@ from decimal import Decimal
 from typing import Any, cast
 
 import pytest
-from conftest import upstream_json
+from conftest import intl_comparable, upstream_json
 
-from indgroup import Grouping, format_number, parse_number, resolve_locale
+from indgroup import Grouping, format_number, parse_number
 
-# ICU's own data writes an apostrophe for Swiss French; the CLDR 48 JSON has no group of
-# its own for fr-CH and inherits the narrow no-break space of fr. CLDR wins here.
-_KNOWN = {"fr-CH": ("'", "\u202f")}
-
-
-def _comparable(tag: str, resolved: str | None) -> bool:
-    if resolved is None:
-        return False
-    plain = tag.lower().split("-u-")[0]
-    try:
-        ours = resolve_locale(tag).lower()
-    except LookupError:
-        return False
-    return resolved.lower() in (plain, ours)
+_comparable = intl_comparable
 
 
 @pytest.fixture(scope="module")
@@ -46,20 +33,17 @@ def test_every_locale_value_and_grouping_matches_intl(reference: Any) -> None:
         if not _comparable(tag, resolved):
             continue
         got = format_number(Decimal(value), tag, grouping=cast(Grouping, grouping))
-        if tag in _KNOWN:
-            icu, cldr = _KNOWN[tag]
-            expected = expected.replace(icu, cldr)
         assert got == expected, (tag, grouping, value)
         compared.add(tag)
         cases += 1
     assert (len(compared), cases) == (650, 60168)
-    probes = {"en-IN", "hi", "es", "pl", "ee", "fr", "de-CH", "tok", "fa", "zh-TW", "iw"}
+    probes = {"en-IN", "hi", "es", "pl", "ee", "fr", "fr-CH", "de-CH", "tok", "fa", "zh-TW", "iw"}
     assert probes <= compared
 
 
 def test_every_intl_output_parses_back(reference: Any) -> None:
     for tag, _grouping, value, resolved, expected in reference["cases"]:
-        if not _comparable(tag, resolved) or tag in _KNOWN:
+        if not _comparable(tag, resolved):
             continue
         back = parse_number(expected, tag)
         assert Decimal(back) == Decimal(value), (tag, expected)

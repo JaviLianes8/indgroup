@@ -27,3 +27,22 @@ def read_upstream(name: str) -> bytes:
 
 def upstream_json(name: str) -> Any:
     return json.loads(read_upstream(name).decode("utf-8"))
+
+
+def intl_comparable(tag: str, resolved: str | None) -> bool:
+    """Whether Intl formatted ``tag`` with the locale this library reads for it.
+
+    ICU ships fewer locales than CLDR: where Intl falls back to another locale (its resolved
+    locale is neither the requested tag nor the CLDR locale this library resolves to), the
+    case says nothing about this library and is left out.
+    """
+    from indgroup import resolve_locale
+
+    if resolved is None:
+        return False
+    plain = tag.lower().split("-u-")[0]
+    try:
+        ours = resolve_locale(tag).lower()
+    except LookupError:
+        return False
+    return resolved.lower() in (plain, ours)

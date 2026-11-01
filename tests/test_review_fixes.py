@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from decimal import Decimal
+from decimal import Context, Decimal
 
 import pytest
 
@@ -49,7 +49,7 @@ def test_group_symbols_are_not_stripped_as_whitespace() -> None:
 
 def test_decimal_subclasses_cannot_change_the_digits() -> None:
     class Shown(Decimal):
-        def __format__(self, spec: str) -> str:
+        def __format__(self, spec: str, context: Context | None = None, /) -> str:
             return "9999999"
 
         def is_finite(self) -> bool:

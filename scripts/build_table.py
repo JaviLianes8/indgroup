@@ -3,8 +3,9 @@
 The CLDR packages are fetched into tests/upstream by scripts/fetch_upstream.py and are not
 part of the repository. The table keeps only facts: for every locale the Latin-digit decimal,
 group and minus symbols, the grouping sizes of the standard decimal pattern and the minimum
-grouping digits; plus the parent locales, the likely script of a language and region where
-a language has several, and the language and region codes CLDR replaces.
+grouping digits; plus the parent locales, the likely script of every language (and of its
+regions where it differs), the likely region of every language,
+and the language and region codes CLDR replaces, including tags of several subtags (zh-yue).
 
     python scripts/build_table.py
 """
@@ -21,7 +22,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = ROOT / "tests" / "upstream"
 TARGET = ROOT / "src" / "indgroup" / "_cldr.json"
-VERSION = "48.0.0"
+VERSION = "48.2.0"
 
 LANGUAGE = re.compile(r"[a-z]{2,3}")
 REGION = re.compile(r"[A-Z]{2}|\d{3}")
@@ -88,22 +89,27 @@ def derive(upstream: Path = UPSTREAM) -> dict[str, Any]:
         "locales": locales,
         "parents": dict(sorted(supplemental["parentLocale"].items())),
         "scripts": _likely_scripts(locales, likely),
-        "aliases": _language_aliases(locales, aliases["languageAlias"]),
+        "homes": _likely_regions(locales, likely),
+        "aliases": _language_aliases(aliases["languageAlias"]),
+        "tags": _tag_aliases(aliases["languageAlias"]),
+        "variants": {key: entry["_replacement"] for key, entry in aliases["variantAlias"].items()},
         "regions": _region_aliases(aliases["territoryAlias"]),
     }
 
 
 def _likely_scripts(locales: dict[str, int], likely: dict[str, str]) -> dict[str, str]:
-    """The likely script of each language written in several, and of its regions that differ.
+    """The likely script of every language, and of the regions where it differs.
 
-    Only languages with locales in more than one script need it: that is what makes
-    ``zh-TW`` read the Traditional Chinese data and ``sr-ME`` reach ``sr-Latn-ME``.
+    The language's own script decides CLDR's nonlikelyScript parent rule (``ru-Latn`` falls
+    back to the root locale, not to ``ru``). A region's script makes ``zh-TW`` read the
+    Traditional Chinese data and ``sr-ME`` reach ``sr-Latn-ME``; where that script has no
+    data, the tag reads what its full form reads: ``ku-GE`` is ``ku-Cyrl-GE``, the root.
     """
-    multi = {name.split("-")[0] for name in locales if _script(name)}
+    languages = {name.split("-")[0] for name in locales} - {"und"}
     found: dict[str, str] = {}
     for key, value in sorted(likely.items()):
         parts = key.split("-")
-        if parts[0] not in multi or not 1 <= len(parts) <= 2:
+        if parts[0] not in languages or not 1 <= len(parts) <= 2:
             continue
         if len(parts) == 2 and not REGION.fullmatch(parts[1]):
             continue
@@ -114,28 +120,54 @@ def _likely_scripts(locales: dict[str, int], likely: dict[str, str]) -> dict[str
     return found
 
 
-def _script(name: str) -> bool:
-    parts = name.split("-")
-    return len(parts) > 1 and len(parts[1]) == 4
+def _likely_regions(locales: dict[str, int], likely: dict[str, str]) -> dict[str, str]:
+    """The likely region of every language, and of a language and script where it differs.
+
+    UTS #35 uses it to pick one region when a deprecated code has several replacements
+    (``200``, Czechoslovakia, is ``CZ`` or ``SK``).
+    """
+    languages = {name.split("-")[0] for name in locales} - {"und"}
+    found: dict[str, str] = {}
+    for key, value in sorted(likely.items()):
+        parts = key.split("-")
+        if parts[0] not in languages or len(parts) > 2 or (len(parts) == 2 and len(parts[1]) != 4):
+            continue
+        region = value.split("-")[-1]
+        if len(parts) == 1 or region != likely.get(parts[0], "").split("-")[-1]:
+            found[key] = region
+    return found
 
 
-def _language_aliases(locales: dict[str, int], table: dict[str, Any]) -> dict[str, str]:
-    """Language codes CLDR replaces, mapped to a replacement whose language has data."""
-    languages = {name.split("-")[0] for name in locales}
+def _language_aliases(table: dict[str, Any]) -> dict[str, str]:
+    """Language codes CLDR replaces, including intermediate aliases without number data."""
     found: dict[str, str] = {}
     for key, entry in sorted(table.items()):
         target = entry["_replacement"]
-        if LANGUAGE.fullmatch(key) and TAG.fullmatch(target) and target.split("-")[0] in languages:
+        if LANGUAGE.fullmatch(key) and TAG.fullmatch(target):
             found[key] = target
     return found
 
 
+def _tag_aliases(table: dict[str, Any]) -> dict[str, str]:
+    """Language aliases of several subtags (``zh-yue`` is ``yue``), keyed in lower case.
+
+    Every one is kept, also where the replacement has no data, so that ``hy-arevmda``
+    (Western Armenian) cannot read Armenian. The private-use part of a replacement
+    (``en-x-i-default``) is dropped: it selects no data.
+    """
+    return {
+        key.lower(): entry["_replacement"].split("-x-")[0]
+        for key, entry in sorted(table.items())
+        if "-" in key
+    }
+
+
 def _region_aliases(table: dict[str, Any]) -> dict[str, str]:
-    """Region codes CLDR replaces by exactly one other region (``UK`` is ``GB``)."""
+    """Region codes CLDR replaces (``UK`` is ``GB``); several replacements are space-separated."""
     return {
         key: entry["_replacement"]
         for key, entry in sorted(table.items())
-        if REGION.fullmatch(key) and REGION.fullmatch(entry["_replacement"])
+        if REGION.fullmatch(key) and all(REGION.fullmatch(r) for r in entry["_replacement"].split())
     }
 
 
