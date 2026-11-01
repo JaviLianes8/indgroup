@@ -204,6 +204,8 @@ The table in `src/indgroup/_cldr.json` is derived by `scripts/build_table.py` fr
 JSON packages. The reference files are not part of the repository; their tests skip while
 they are absent, and the live `Intl.NumberFormat` comparison needs Node 24.18 (ICU 78.3).
 `INDGROUP_E2E=1` adds a test that builds, installs and drives the wheel.
+`INDGROUP_E2E_PYPI=1` also checks an in-place upgrade from the published 0.2.0 release,
+including the public signatures, stored `NumberSymbols` values and both CLI entry points.
 
 ## License
 

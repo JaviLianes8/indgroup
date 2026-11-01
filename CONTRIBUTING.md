@@ -16,7 +16,8 @@ pip install -r requirements-dev.txt
   timing tests read the clock, the docs tests read README and GUIDE and run `git`, the CLI
   tests start `python -m indgroup`, the source and Intl tests read the fetched reference
   files and run Node (they skip while a file or Node is absent), and the wheel test
-  (`INDGROUP_E2E=1`) builds the package and installs it into a throwaway venv.
+  (`INDGROUP_E2E=1`) builds the package and installs it into a throwaway venv. The upgrade
+  test (`INDGROUP_E2E_PYPI=1`) downloads 0.2.0 from PyPI and upgrades it to the built wheel.
 - Run `scripts/check.ps1` (format, lint, types, tests) and make sure it passes.
 - One logical change per commit, imperative subject line.
 

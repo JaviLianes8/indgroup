@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-10-26
+## [1.0.0] - 2026-11-01
 
 The first stable release. The public API is the eleven names of 0.2.0 with their
 signatures, parameter names and defaults unchanged: `format_indian`, `parse_indian`,

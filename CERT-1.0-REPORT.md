@@ -1,9 +1,10 @@
 # indgroup 1.0.0 certification report
 
-The 1.0.0 certification bar applied to indgroup. Nothing is on PyPI yet
-(`https://pypi.org/pypi/indgroup/json` answered 404 on 2026-10-25, checked twice), so 1.0.0
-is the first release and there is no upgrade path to check; the CHANGELOG still lists every
-change against 0.2.0, the last tagged state of `main`.
+The 1.0.0 certification bar applied to indgroup. PyPI now has 0.2.0, published on
+2026-10-29 and verified at `https://pypi.org/pypi/indgroup/json` on 2026-11-01. All eleven
+package files in that wheel are byte for byte the `main` tree at e5cecf8. The CHANGELOG
+therefore describes changes against the published release. The earlier 2026-10-25 check
+returned 404; the preparation update below supersedes that historical result.
 
 Progress:
 - [x] Branch `release/1.0.0` created from `main` (e5cecf8, version 0.2.0)
@@ -28,6 +29,7 @@ Progress:
 - [x] QA round 9: lens e re-checked round 8 and reported 3 findings, every one fixed in c84b46b (see QA)
 - [x] QA round 10: lens e re-checked round 9 and reported 4 findings, every one fixed in 4d8440f (see QA)
 - [x] QA round 11: lens e re-checked round 10 and reported 3 findings, every one fixed in 12b7bc5 (see QA)
+- [x] QA round 12: lens e re-checked round 11 and reported 2 findings, both fixed in c3c7c39 (see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -42,15 +44,66 @@ Progress:
 | 5 | Typed, documented, bounded errors | PASS: `TypeError` for wrong types, `ValueError` for bad values, `LookupError` for locales without data, each documented per function; messages quote at most 40 characters of the input |
 | 6 | Contract tests of every public name | PASS |
 | 7 | Real ground truth | PASS: see Ground truth |
-| 8 | Real e2e from the wheel | PASS: wheel built, installed in a throwaway venv, driven from an empty folder, typed from a consumer with `mypy --strict`, CLI run as `indgroup` and `python -m indgroup`; no PyPI release to upgrade from |
+| 8 | Real e2e from the wheel | PASS: wheel built, installed in a throwaway venv, driven from an empty folder, typed from a consumer with `mypy --strict`, CLI run as `indgroup` and `python -m indgroup`; the 2026-11-01 preparation update adds the actual PyPI 0.2.0 upgrade |
 | 9 | Seeded fuzz, no crash, hang or blowup | PASS: three seeds over the formatters, the strict grammar of both parsers against an independent acceptor, and timed hostile shapes |
-| 10 | Supported Pythons | PASS: CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t (free-threaded); 3.8.20 and 3.9.25 are installed but below `requires-python`; no 3.13t is installed here |
+| 10 | Supported Pythons | PASS: historical matrix covers CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t; the current laptop has CPython 3.14.6 only, checked again on 2026-11-01; see preparation update for unavailable versions |
 | 11 | README and `twine check` | PASS: `twine check --strict` on wheel and sdist, absolute links, README examples run as tests, the Babel facts re-checked against Babel 2.18.0 (10 MB wheel, CLDR 47, `format_decimal(1234, locale="es")` gives `1.234`, three fraction digits unless `decimal_quantization=False`) |
-| 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-10-26; 0.2.0 and 0.1.0 dated from their merge commits |
+| 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-11-01; 0.2.0 and 0.1.0 dated from their merge commits |
 | 13 | pyproject 1.0.0, Production/Stable | PASS: classifiers for 3.10 to 3.14, `MIT AND Unicode-3.0`, both licence files, URLs, keywords, no runtime dependencies |
 | 14 | sdist and wheel contents | PASS: see Matrix, packaging and gates |
 | 15 | Gates each exit 0 | PASS: see Matrix, packaging and gates |
 | 18 | Contracts bite (mutations) | PASS: 18 of 18 author mutations killed, see Mutation round |
+
+## Preparation update (2026-11-01)
+
+Continued from 09fe54a, preserving all previous commits and the completed mutation table.
+No production code changed in this update. The unfinished upgrade test is now complete,
+the CHANGELOG date is 2026-11-01, and the development instructions name the upgrade opt-in.
+
+- PyPI 0.2.0 was fetched live from the JSON endpoint above. Its wheel sha256 is
+  `938b728a3a39773955e70d062b7d97c13f685ba9a33365a32c79c617646d4276`.
+  All eleven files under `indgroup/` match `main:src/indgroup/` byte for byte.
+- `test_upgrade.py` installs that release from `https://pypi.org/simple` into a fresh
+  venv, records the eleven-name API and a `NumberSymbols` pickle, and upgrades the same
+  environment to the built 1.0.0 wheel. The API signatures and old pickle survive. The
+  documented CLDR version, Swiss French symbol, script fallback, strict zero-group and
+  grouping-error changes are checked before and after. Both `indgroup` and
+  `python -m indgroup` run as subprocesses from an empty consumer directory.
+- All four downloaded sources in the Ground truth table were fetched again during this
+  update. Their sizes and hashes match `tests/upstream/MANIFEST.json`. Node 24.18.0,
+  ICU 78.3 and CLDR 48.0 regenerated all 72,036 reference cases with the recorded hash.
+  The live oracle also ran the three seeds of 6,000 cases each. Downloaded content and
+  temporary environments stayed under
+  `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/resume-20261101/`.
+- All four gates passed separately: `ruff format --check .`, `ruff check .`,
+  `mypy --strict src` and `pytest`. `mypy --strict src tests` also passed (41 files).
+  The full suite ran in a local checkout with the completed upgrade test, fetched sources,
+  Node and Git's POSIX shell on PATH, `INDGROUP_E2E=1`, `INDGROUP_E2E_PYPI=1`,
+  `--timeout=300` and `--basetemp` under the scratch directory: **649 passed, no skips**
+  in 62.11 seconds. This includes doctests, documentation examples, seeded properties,
+  hostile input, both wheel tests and closed-stream CLI tests.
+- CPython 3.14.6 is the only installed interpreter found on this laptop. The other
+  `py -0p` entries point to missing executables. CPython 3.10, 3.11, 3.12, 3.13 and
+  free-threaded builds could not be rerun here; the earlier matrix below remains
+  historical evidence, not a claim that those interpreters are still installed.
+- Final wheel and sdist built successfully with hatchling 1.33.0 and both pass
+  `twine check --strict`. Every archive member was inspected. The wheel has 21 files:
+  package modules and data, `py.typed`, metadata, the console entry point and both
+  licences. The sdist has 61 members: source, maintained tests and scripts, the upstream
+  manifest, project documentation and licences. Neither contains fetched references,
+  caches, scratch files or certification reports. Wheel package files match the source
+  tree. All Python source files remain at most 200 lines.
+- The exact certified badge from the reference README is present. The existing 18-mutant
+  author round and later regression mutation tables remain valid for unchanged production
+  code. No earlier QA lens has an explicit final PASS verdict in the available report;
+  the independent reviewer and the five QA lenses remain pending.
+
+Final artifact sha256 values:
+
+| Artifact | Bytes | sha256 |
+| --- | --- | --- |
+| `indgroup-1.0.0-py3-none-any.whl` | 37534 | `fba0fa6354998e32acb8c7ecf046813e360a025d7a2a3a9766cbe50c89fc8f42` |
+| `indgroup-1.0.0.tar.gz` | 78867 | `6780a88a144abaade88bc4a96d5efda956c15076d7c42edb14ea60fa7062656a` |
 
 ## Defects found in 0.2.0 (reproduced on 2026-10-25)
 
