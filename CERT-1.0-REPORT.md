@@ -31,8 +31,64 @@ Progress:
 - [x] QA round 11: lens e re-checked round 10 and reported 3 findings, every one fixed in 12b7bc5 (see QA)
 - [x] QA round 12: lens e re-checked round 11 and reported 2 findings, both fixed in c3c7c39 (see QA)
 - [x] QA lenses round 1 at 7935b54: all nine reported findings fixed (2026-11-01, see QA)
-- [ ] Five QA lenses report PASS (item 19)
-- [ ] Independent reviewer reports PASS (item 16)
+- [x] Five QA lenses report PASS (item 19, final verdicts below)
+- [x] Independent reviewer reports PASS (item 16, scorecard below)
+
+## Final QA and review (2026-11-01)
+
+All five lenses conclude PASS with no open findings. Rounds count the final
+2026-11-01 certification cycle; the earlier rounds remain recorded below.
+
+| Lens | Rounds | Final verdict | Report path | Commit |
+| --- | --- | --- | --- | --- |
+| a: API and documentation | 2 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-a-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
+| b: Correctness and ground truth | 2 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-b-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
+| c: Robustness and hostile input | 2 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-c-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
+| d: Packaging and real end-to-end use | 1 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-d-r1/REPORT.md` | `7935b543b1d3d4ffd53b4d94120b09ea7fd52928` |
+| e: Contract strength | 1 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-e-r1/REPORT.md` | `7935b543b1d3d4ffd53b4d94120b09ea7fd52928` |
+
+Lenses a, b and c rechecked all nine findings and each ran 40 additional probes.
+Lens e killed all 58 deliberately changed behaviors. The d/e verdicts retain their
+actual commit: they are not represented as runs at the later commit. The reviewer
+reran packaging, the interpreter matrix and 14 mutations at the later commit.
+
+### Reviewer scorecard
+
+Round 1: PASS, no findings. Reviewed commit:
+`6c519508f30ded221338888b0ca88e99fa5e4e2f`.
+Report: `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/review-r1/REPORT.md`.
+All 18 items assigned to the reviewer passed:
+
+| # | Item | Verdict | Evidence |
+| --- | --- | --- | --- |
+| 1 | Stable public API | PASS | Eleven public names, signatures, defaults and errors pinned; actual 0.2.0 upgrade preserves signatures and existing pickles |
+| 2 | Exact public surface | PASS | Exact `__all__`, all exports resolve, documentation uses public imports |
+| 3 | Executable documentation | PASS | All doctests, three README Python blocks, four GUIDE blocks and three CLI transcripts run |
+| 4 | End-to-end typing | PASS | Strict source and test typing; installed consumers pass with `--disallow-any-expr`; `py.typed` ships |
+| 5 | Typed, bounded errors | PASS | Error families, hostile types, secrets and malformed inputs checked without input echoes |
+| 6 | Complete contracts | PASS | Every public name, return type, precision, grouping mode, boundary and failure path exercised |
+| 7 | Ground truth | PASS | Six reference hashes verified; 1,773 canonicalization pairs, 60,168 recorded Intl comparisons, 18,000 live cases and 15,320 independently derived CLDR expectations |
+| 8 | Real end-to-end use and upgrade | PASS | Wheel and sdist installed into separate venvs; external consumers, both CLI entry points and actual PyPI 0.2.0 upgrade pass |
+| 9 | Seeded fuzz and hostile input | PASS | 207,000 property iterations, long inputs, digit bounds, huge exponents and growth checks pass |
+| 10 | Available Python versions | PASS | CPython 3.10.22, 3.11.18, 3.12.16, 3.13.18, 3.14.6 and 3.14.10 free-threaded pass; unavailable launcher paths documented |
+| 11 | README and package rendering | PASS | Both artifacts pass `twine check --strict`; README renders without warnings; links and comparison claims checked |
+| 12 | Dated CHANGELOG | PASS | 1.0.0 dated 2026-11-01, with stable API and changes against published 0.2.0 |
+| 13 | Project metadata | PASS | Version 1.0.0, Production/Stable, Python classifiers, URLs, keywords and licenses verified in built metadata; no runtime dependencies |
+| 14 | Artifact contents | PASS | All 21 wheel and 65 sdist members inspected; package bytes and RECORD hashes verified; licenses and typing marker present |
+| 15 | Separate gates | PASS | Format, lint, strict typing and pytest each exit 0; 819 tests pass without skips |
+| 16 | Independent review | PASS | All assigned items checked and executed; no findings |
+| 18 | Contracts detect deliberate bugs | PASS | Existing 18-row mutation table retained; all 14 new reviewer mutations fail the existing tests |
+| 19 | Five QA lenses | PASS | All five final reports and their supporting evidence verified, including all 58 lens e failure records |
+
+Item 17 remains the release handoff: PR #3 targets `main` from `release/1.0.0`.
+The reviewer reserved merge and publication to the release owner. Neither action is
+part of this finalization, and neither is claimed complete here.
+
+The review's matrix supersedes the preparation update's interpreter-availability
+snapshot: scratch installations supplied every supported minor version. Its main
+suite passed 819 tests without skips; supplementary interpreters each passed 817
+tests with only the two separately covered packaging opt-ins skipped. Other operating
+systems and 32-bit builds were unavailable.
 
 ## Scorecard (author)
 
@@ -47,7 +103,7 @@ Progress:
 | 7 | Real ground truth | PASS: see Ground truth |
 | 8 | Real e2e from the wheel | PASS: wheel built, installed in a throwaway venv, driven from an empty folder, typed from a consumer with `mypy --strict`, CLI run as `indgroup` and `python -m indgroup`; the 2026-11-01 preparation update adds the actual PyPI 0.2.0 upgrade |
 | 9 | Seeded fuzz, no crash, hang or blowup | PASS: three seeds over the formatters, the strict grammar of both parsers against an independent acceptor, and timed hostile shapes |
-| 10 | Supported Pythons | PASS: historical matrix covers CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2t; the current laptop has CPython 3.14.6 only, checked again on 2026-11-01; see preparation update for unavailable versions |
+| 10 | Supported Pythons | PASS: the final review ran CPython 3.10.22, 3.11.18, 3.12.16, 3.13.18, 3.14.6 and 3.14.10 free-threaded locally; see the final scorecard and review report for results and unavailable launcher paths |
 | 11 | README and `twine check` | PASS: `twine check --strict` on wheel and sdist, absolute links, README examples run as tests, the Babel facts re-checked against Babel 2.18.0 (10 MB wheel, CLDR 47, `format_decimal(1234, locale="es")` gives `1.234`, three fraction digits unless `decimal_quantization=False`) |
 | 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-11-01; 0.2.0 and 0.1.0 dated from their merge commits |
 | 13 | pyproject 1.0.0, Production/Stable | PASS: classifiers for 3.10 to 3.14, `MIT AND Unicode-3.0`, both licence files, URLs, keywords, no runtime dependencies |
@@ -96,8 +152,8 @@ the CHANGELOG date is 2026-11-01, and the development instructions name the upgr
   tree. All Python source files remain at most 200 lines.
 - The exact certified badge from the reference README is present. The existing 18-mutant
   author round and later regression mutation tables remain valid for unchanged production
-  code. No earlier QA lens has an explicit final PASS verdict in the available report;
-  the independent reviewer and the five QA lenses remain pending.
+  code. At that preparation stage the independent reviewer and five final QA verdicts
+  were pending; the final QA and review section above records their completed results.
 
 Final artifact sha256 values:
 
