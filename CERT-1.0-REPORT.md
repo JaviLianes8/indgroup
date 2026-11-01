@@ -41,11 +41,11 @@ All five lenses conclude PASS with no open findings. Rounds count the final
 
 | Lens | Rounds | Final verdict | Report path | Commit |
 | --- | --- | --- | --- | --- |
-| a: API and documentation | 2 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-a-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
-| b: Correctness and ground truth | 2 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-b-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
-| c: Robustness and hostile input | 2 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-c-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
-| d: Packaging and real end-to-end use | 1 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-d-r1/REPORT.md` | `7935b543b1d3d4ffd53b4d94120b09ea7fd52928` |
-| e: Contract strength | 1 | PASS | `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/lens-e-r1/REPORT.md` | `7935b543b1d3d4ffd53b4d94120b09ea7fd52928` |
+| a: API and documentation | 2 | PASS | `indgroup-cert/lens-a-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
+| b: Correctness and ground truth | 2 | PASS | `indgroup-cert/lens-b-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
+| c: Robustness and hostile input | 2 | PASS | `indgroup-cert/lens-c-r2/REPORT.md` | `6c519508f30ded221338888b0ca88e99fa5e4e2f` |
+| d: Packaging and real end-to-end use | 1 | PASS | `indgroup-cert/lens-d-r1/REPORT.md` | `7935b543b1d3d4ffd53b4d94120b09ea7fd52928` |
+| e: Contract strength | 1 | PASS | `indgroup-cert/lens-e-r1/REPORT.md` | `7935b543b1d3d4ffd53b4d94120b09ea7fd52928` |
 
 Lenses a, b and c rechecked all nine findings and each ran 40 additional probes.
 Lens e killed all 58 deliberately changed behaviors. The d/e verdicts retain their
@@ -56,7 +56,7 @@ reran packaging, the interpreter matrix and 14 mutations at the later commit.
 
 Round 1: PASS, no findings. Reviewed commit:
 `6c519508f30ded221338888b0ca88e99fa5e4e2f`.
-Report: `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/review-r1/REPORT.md`.
+Report: `indgroup-cert/review-r1/REPORT.md`.
 All 18 items assigned to the reviewer passed:
 
 | # | Item | Verdict | Evidence |
@@ -131,7 +131,7 @@ the CHANGELOG date is 2026-11-01, and the development instructions name the upgr
   ICU 78.3 and CLDR 48.0 regenerated all 72,036 reference cases with the recorded hash.
   The live oracle also ran the three seeds of 6,000 cases each. Downloaded content and
   temporary environments stayed under
-  `C:/lianes8-build/codex-pylib/scratch/indgroup-cert/resume-20261101/`.
+  `indgroup-cert/resume-20261101/`.
 - All four gates passed separately: `ruff format --check .`, `ruff check .`,
   `mypy --strict src` and `pytest`. `mypy --strict src tests` also passed (41 files).
   The full suite ran in a local checkout with the completed upgrade test, fetched sources,
