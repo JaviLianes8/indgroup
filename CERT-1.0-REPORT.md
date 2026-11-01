@@ -271,7 +271,8 @@ re-review remains pending. Public names, signatures, defaults and exception cate
 are unchanged. The CHANGELOG records each behaviour change; README, GUIDE and doctests
 describe the final error and parsing contracts.
 
-Implementation commit: `fix round 1 qa findings`, immediately after the reviewed head above.
+Implementation commit: `aa2ff49620c918936c8dd2522571f085c2bd5065`
+(`fix round 1 qa findings`), immediately after the reviewed head above.
 
 | Findings | Severity | Change and contract coverage |
 | --- | --- | --- |
