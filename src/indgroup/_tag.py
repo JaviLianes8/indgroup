@@ -6,7 +6,7 @@ import re
 from functools import lru_cache
 
 from ._table import table
-from ._value import shown
+from ._value import input_size
 
 __all__ = ["parse_tag"]
 
@@ -30,8 +30,12 @@ def _is_region(part: str) -> bool:
 
 @lru_cache(maxsize=1)
 def _rules() -> Rules:
-    """CLDR's language aliases of several subtags, by their first subtag, the longest first."""
-    tags: dict[str, str] = table()["tags"]
+    """Simple, compound and variant aliases, indexed by their first subtag."""
+    tags: dict[str, str] = {
+        **table()["aliases"],
+        **table()["tags"],
+        **{f"und-{key}": f"und-{value}" for key, value in table()["variants"].items()},
+    }
     rules: Rules = {}
     for key in sorted(tags, key=lambda key: (-key.count("-"), key)):
         first, *rest = key.split("-")
@@ -39,7 +43,27 @@ def _rules() -> Rules:
     return rules
 
 
-def _legacy(subtags: list[str]) -> list[str]:
+def _priority(
+    first: str, need: frozenset[str]
+) -> tuple[int, bool, bool, bool, bool, str, tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    # UTS #35 Annex C: most fields first, then presence of L/S/R/V, then code-point order.
+    script = tuple(sorted(part for part in need if _is_script(part)))
+    region = tuple(sorted(part for part in need if _is_region(part)))
+    variants = tuple(sorted(need.difference(script, region)))
+    return (
+        -(len(need) + (first != "und")),
+        first == "und",
+        not script,
+        not region,
+        not variants,
+        first,
+        script,
+        region,
+        variants,
+    )
+
+
+def _legacy(subtags: list[str], modifier: str) -> list[str]:
     """``subtags`` with CLDR's language aliases of several subtags applied.
 
     A rule matches when its first subtag is the language (``und`` matches any) and its other
@@ -57,9 +81,9 @@ def _legacy(subtags: list[str]) -> list[str]:
     end = next((at for at in range(1, len(subtags)) if len(subtags[at]) == 1), len(subtags))
     language, own = subtags[0], subtags[1:end]
     added: list[str] = []  # the replacements' subtags after their language
-    # A rule removes the subtags it matched, and no replacement brings back all of a rule's
-    # subtags, so each rule applies at most once and this bound is only a guard.
-    for _ in range(len(table()["tags"]) + 1):
+    # Each rule changes the language or consumes matched subtags; CLDR's aliases are acyclic.
+    data = table()
+    for _ in range(len(data["aliases"]) + len(data["tags"]) + len(data["variants"]) + 1):
         present = {part.lower() for part in (*own, *added)}
         found = [
             (first, need, replacement)
@@ -69,9 +93,12 @@ def _legacy(subtags: list[str]) -> list[str]:
         ]
         if not found:
             break
-        first, need, (replaced, *extra) = found[0]
+        first, need, (replaced, *extra) = min(found, key=lambda rule: _priority(rule[0], rule[1]))
         if replaced != "und" or first != "und":
             language = replaced
+        if not need and modifier:
+            # A POSIX modifier overrides a simple alias's default script, as before.
+            extra = [part for part in extra if not _is_script(part)]
         own = [part for part in own if part.lower() not in need]
         added = [part for part in added if part.lower() not in need] + extra
     extended = [own.pop(0)] if own and len(own[0]) == 3 and own[0].isalpha() else []
@@ -91,35 +118,31 @@ def _legacy(subtags: list[str]) -> list[str]:
 
 def parse_tag(locale: str) -> tuple[str, str, str, list[str]]:
     """Language, script, region (empty when absent) and variants of a locale tag."""
-    if not isinstance(locale, str):
-        raise TypeError(f"locale must be a str, not {type(locale).__name__}")
+    if not issubclass(type(locale), str):
+        raise TypeError("locale must be a str")
     tag, _, modifier = str.__str__(locale).partition("@")
     subtags = tag.split(".", 1)[0].replace("_", "-").split("-")  # POSIX "es_ES.UTF-8"
     if not all(_SUBTAG.fullmatch(part) for part in subtags):
-        raise ValueError(f"not a locale tag: {shown(locale)}")
-    subtags = _legacy(subtags)
+        raise ValueError(f"not a locale tag: {input_size(locale)}")
+    modifier_script = _MODIFIERS.get(modifier.lower(), "")
+    subtags = _legacy(subtags, modifier_script)
     if subtags[0].lower() == "root":
         subtags[0] = "und"
     if not _LANGUAGE.fullmatch(subtags[0]):
-        raise ValueError(f"not a locale tag: {shown(locale)}")
+        raise ValueError(f"not a locale tag: {input_size(locale)}")
     rest = subtags[1:]
     if rest and len(rest[0]) == 3 and rest[0].isalpha():
-        raise ValueError(f"extended language subtags are not supported: {shown(locale)}")
+        raise ValueError(f"extended language subtags are not supported: {input_size(locale)}")
     script = rest.pop(0).title() if rest and _is_script(rest[0]) else ""
-    script = script or _MODIFIERS.get(modifier.lower(), "")  # a script in the tag wins
+    script = script or modifier_script  # a script in the tag wins
     region = rest.pop(0).upper() if rest and _is_region(rest[0]) else ""
     variants = []
     for part in rest:
         if len(part) == 1:  # extensions and private use do not select number data
             break
         variants.append(part.lower())
-    alias = table()["aliases"].get(subtags[0].lower(), subtags[0].lower()).split("-")
-    for extra in alias[1:]:
-        if len(extra) == 4:
-            script = script or extra
-        else:
-            region = region or extra  # a region in the tag wins: "swc-KE" is "sw-KE"
-    return alias[0], script, _region(alias[0], script, region), variants
+    language = subtags[0].lower()
+    return language, script, _region(language, script, region), variants
 
 
 def _region(language: str, script: str, region: str) -> str:

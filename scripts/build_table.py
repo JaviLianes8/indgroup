@@ -90,8 +90,9 @@ def derive(upstream: Path = UPSTREAM) -> dict[str, Any]:
         "parents": dict(sorted(supplemental["parentLocale"].items())),
         "scripts": _likely_scripts(locales, likely),
         "homes": _likely_regions(locales, likely),
-        "aliases": _language_aliases(locales, aliases["languageAlias"]),
+        "aliases": _language_aliases(aliases["languageAlias"]),
         "tags": _tag_aliases(aliases["languageAlias"]),
+        "variants": {key: entry["_replacement"] for key, entry in aliases["variantAlias"].items()},
         "regions": _region_aliases(aliases["territoryAlias"]),
     }
 
@@ -137,13 +138,12 @@ def _likely_regions(locales: dict[str, int], likely: dict[str, str]) -> dict[str
     return found
 
 
-def _language_aliases(locales: dict[str, int], table: dict[str, Any]) -> dict[str, str]:
-    """Language codes CLDR replaces, mapped to a replacement whose language has data."""
-    languages = {name.split("-")[0] for name in locales}
+def _language_aliases(table: dict[str, Any]) -> dict[str, str]:
+    """Language codes CLDR replaces, including intermediate aliases without number data."""
     found: dict[str, str] = {}
     for key, entry in sorted(table.items()):
         target = entry["_replacement"]
-        if LANGUAGE.fullmatch(key) and TAG.fullmatch(target) and target.split("-")[0] in languages:
+        if LANGUAGE.fullmatch(key) and TAG.fullmatch(target):
             found[key] = target
     return found
 

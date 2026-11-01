@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from ._table import table
 from ._tag import parse_tag
-from ._value import shown
+from ._value import input_size
 
 __all__ = ["cldr_version", "resolve_locale", "supported_locales"]
 
@@ -52,6 +54,25 @@ def _walk(tag: str) -> str | None:
     return None
 
 
+@lru_cache(maxsize=1)
+def _variant_bundles() -> dict[str, list[tuple[frozenset[str], str]]]:
+    bundles: dict[str, list[tuple[frozenset[str], str]]] = {}
+    for tag in table()["locales"]:
+        language, script, region, variants = parse_tag(tag)
+        if variants:
+            base = "-".join(part for part in (language, script, region) if part)
+            bundles.setdefault(base, []).append((frozenset(variants), tag))
+    for choices in bundles.values():
+        choices.sort(key=lambda item: (-len(item[0]), item[1]))
+    return bundles
+
+
+def _variant(base: str, variants: list[str]) -> str | None:
+    # Scan available bundles, never the exponentially many subsets of the input variants.
+    present = frozenset(variants)
+    return next((tag for need, tag in _variant_bundles().get(base, ()) if need <= present), None)
+
+
 def resolve_locale(locale: str) -> str:
     """The CLDR locale whose number symbols ``locale`` uses.
 
@@ -82,21 +103,23 @@ def resolve_locale(locale: str) -> str:
     >>> resolve_locale("xx")
     Traceback (most recent call last):
     ...
-    LookupError: no number data for locale 'xx'
+    LookupError: no number data for locale (2 characters)
     """
     language, script, region, variants = parse_tag(locale)
     data = table()
     base = "-".join(part for part in (language, script, region) if part)
-    if variants and f"{base}-{'-'.join(variants)}" in data["locales"]:
-        return f"{base}-{'-'.join(variants)}"
+    variant = _variant(base, variants) if variants else None
+    if variant:
+        return variant
     if base in data["locales"]:
         return base
     found = None
     default = data["scripts"].get(language)
     if script and script == default:  # "en-Latn-GB" is "en-GB": CLDR omits default scripts
         base = "-".join(part for part in (language, region) if part)
-        if variants and f"{base}-{'-'.join(variants)}" in data["locales"]:
-            return f"{base}-{'-'.join(variants)}"
+        variant = _variant(base, variants) if variants else None
+        if variant:
+            return variant
     elif not script and default:
         likely = data["scripts"].get(f"{language}-{region}", default)
         tagged = "-".join(part for part in (language, likely, region) if part)
@@ -107,5 +130,5 @@ def resolve_locale(locale: str) -> str:
             found = tagged
     found = found or _walk(base)
     if found is None:
-        raise LookupError(f"no number data for locale {shown(locale)}")
+        raise LookupError(f"no number data for locale {input_size(locale)}")
     return found

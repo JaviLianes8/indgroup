@@ -71,9 +71,9 @@ def test_stdout_is_written_as_utf8() -> None:
 
 
 @pytest.mark.parametrize("value", ["1x\u20ac", "\u00e9", "\u65e5\u672c"])
-def test_errors_quote_a_value_read_from_stdin_as_utf8_text(value: str) -> None:
+def test_errors_count_a_value_read_from_stdin_as_utf8_text(value: str) -> None:
     stdin = f"{value}\n".encode()
-    expected = _error(f"not a plain number: '{value}'")
+    expected = _error(f"not a plain number: ({len(value)} characters)")
     assert _run(["-l", "de"], stdin) == (2, b"", expected)
 
 
@@ -81,12 +81,12 @@ def test_errors_quote_a_value_read_from_stdin_as_utf8_text(value: str) -> None:
 @pytest.mark.parametrize(
     ("argv", "message"),
     [
-        (["-\u00e9", "1"], "unknown option '-\u00e9'"),
-        (["-l", "de", "1x\u20ac"], "not a plain number: '1x\u20ac'"),
-        (["-l", "\u65e5\u672c", "1"], "not a locale tag: '\u65e5\u672c'"),
+        (["-\u00e9", "1"], "unknown option (2 characters)"),
+        (["-l", "de", "1x\u20ac"], "not a plain number: (3 characters)"),
+        (["-l", "\u65e5\u672c", "1"], "not a locale tag: (2 characters)"),
     ],
 )
-def test_errors_quote_an_argument_as_utf8_text(argv: list[str], message: str) -> None:
+def test_errors_count_an_argument_as_utf8_text(argv: list[str], message: str) -> None:
     assert _run(argv) == (2, b"", _error(message))
 
 

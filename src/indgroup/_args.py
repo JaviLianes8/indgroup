@@ -10,7 +10,7 @@ import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from ._value import shown
+from ._value import input_size
 
 __all__ = ["GROUPINGS", "HELP", "Args", "UsageError", "read_args"]
 
@@ -71,8 +71,8 @@ def _option(text: str, arg: str) -> str:
     if len(matches) == 1:
         return matches[0]
     if matches:
-        raise UsageError(f"ambiguous option {shown(text)}: {' or '.join(matches)}")
-    raise UsageError(f"unknown option {shown(arg)}")
+        raise UsageError(f"ambiguous option {input_size(text)}: {' or '.join(matches)}")
+    raise UsageError(f"unknown option {input_size(arg)}")
 
 
 def _set(args: Args, name: str, value: str) -> None:
@@ -81,7 +81,9 @@ def _set(args: Args, name: str, value: str) -> None:
     elif value in GROUPINGS:
         args.grouping = value
     else:
-        raise UsageError(f"--grouping must be one of {', '.join(GROUPINGS)}, not {shown(value)}")
+        raise UsageError(
+            f"--grouping must be one of {', '.join(GROUPINGS)}, not {input_size(value)}"
+        )
 
 
 def _next(rest: Iterator[str], name: str) -> str:
@@ -105,7 +107,7 @@ def _cluster(args: Args, arg: str, rest: Iterator[str]) -> bool:
     for index in range(1, len(arg)):
         letter = "-" + arg[index]
         if index > 1 and letter not in _SHORT:
-            raise UsageError(f"unknown option {shown(letter)} in {shown(arg)}")
+            raise UsageError(f"unknown option {input_size(letter)} in {input_size(arg)}")
         name = _option(letter, arg)
         if name in ("--locale", "--grouping"):
             attached = arg[index + 1 :]  # the only copy: the value ends the argument
@@ -113,7 +115,7 @@ def _cluster(args: Args, arg: str, rest: Iterator[str]) -> bool:
             _set(args, name, value)
             return False
         if arg[index + 1 : index + 2] == "=":  # one character, so a long cluster stays linear
-            raise UsageError(f"{name} takes no value: {shown(arg)}")
+            raise UsageError(f"{name} takes no value: {input_size(arg)}")
         if _flag(args, name):
             return True
     return False
@@ -139,7 +141,7 @@ def read_args(argv: list[str]) -> Args:
         if name in ("--locale", "--grouping"):
             _set(args, name, value if attached else _next(rest, name))
         elif attached:
-            raise UsageError(f"{name} takes no value: {shown(arg)}")
+            raise UsageError(f"{name} takes no value: {input_size(arg)}")
         elif _flag(args, name):
             return args
     return args

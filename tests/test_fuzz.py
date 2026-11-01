@@ -45,7 +45,12 @@ def _accept(
     text: str, decimal: str, group: str, sizes: tuple[int, int], signs: list[str]
 ) -> object:
     """What a strict parse must return for ``text``, or None when it must refuse it."""
-    raw = text.strip(SPACES)
+    start, end = 0, len(text)
+    while start < end and text[start] in SPACES and text[start] != group:
+        start += 1
+    while end > start and text[end - 1] in SPACES and text[end - 1] != group:
+        end -= 1
+    raw = text[start:end]
     negative = False
     for sign in signs:
         if raw.startswith(sign):

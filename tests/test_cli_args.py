@@ -92,11 +92,11 @@ def test_argument_errors_are_one_short_line(
 
 def test_argument_errors_name_the_problem(capsys: pytest.CaptureFixture[str]) -> None:
     assert "auto, min2, always, off" in error_of(capsys, "-g", "sometimes", "1")
-    assert "'--nope'" in error_of(capsys, "--nope", "1")
+    assert "unknown option (6 characters)" in error_of(capsys, "--nope", "1")
     assert "20003 characters" in error_of(capsys, "--x" + LONG)
     assert "--locale" in error_of(capsys, "-l")
     assert "ambiguous" in error_of(capsys, "--loca", "de")
-    assert "not a plain number: '-1.2.3'" in error_of(capsys, "-1.2.3")
+    assert "not a plain number: (6 characters)" in error_of(capsys, "-1.2.3")
 
 
 def test_abbreviated_and_attached_options() -> None:

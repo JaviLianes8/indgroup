@@ -30,6 +30,7 @@ Progress:
 - [x] QA round 10: lens e re-checked round 9 and reported 4 findings, every one fixed in 4d8440f (see QA)
 - [x] QA round 11: lens e re-checked round 10 and reported 3 findings, every one fixed in 12b7bc5 (see QA)
 - [x] QA round 12: lens e re-checked round 11 and reported 2 findings, both fixed in c3c7c39 (see QA)
+- [x] QA lenses round 1 at 7935b54: all nine reported findings fixed (2026-11-01, see QA)
 - [ ] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer reports PASS (item 16)
 
@@ -41,7 +42,7 @@ Progress:
 | 2 | `__all__` exact, no private imports in docs | PASS |
 | 3 | Docstrings with runnable examples, doctests | PASS: every public function and `NumberSymbols` carries doctests, `Number` and `Grouping` are shown in the package docstring; README and GUIDE blocks run as tests |
 | 4 | Typed end to end | PASS: `mypy --strict src tests`, `py.typed` shipped, typing checked from an external consumer in the e2e test |
-| 5 | Typed, documented, bounded errors | PASS: `TypeError` for wrong types, `ValueError` for bad values, `LookupError` for locales without data, each documented per function; messages quote at most 40 characters of the input |
+| 5 | Typed, documented, bounded errors | PASS: `TypeError` for wrong types, `ValueError` for bad values, `LookupError` for locales without data, each documented per function; messages include reasons and length metadata, never input text or user-defined class names |
 | 6 | Contract tests of every public name | PASS |
 | 7 | Real ground truth | PASS: see Ground truth |
 | 8 | Real e2e from the wheel | PASS: wheel built, installed in a throwaway venv, driven from an empty folder, typed from a consumer with `mypy --strict`, CLI run as `indgroup` and `python -m indgroup`; the 2026-11-01 preparation update adds the actual PyPI 0.2.0 upgrade |
@@ -262,6 +263,49 @@ b63f709 gives the same files on two separate builds, so every run below tested o
   `_args.py` module of the new command-line reader and the new test files in the sdist.
 
 ## QA
+
+### QA lenses round 1 (2026-11-01, at 7935b543b1d3d4ffd53b4d94120b09ea7fd52928)
+
+All nine findings from lenses a, b and c are fixed; none is disputed. Independent lens
+re-review remains pending. Public names, signatures, defaults and exception categories
+are unchanged. The CHANGELOG records each behaviour change; README, GUIDE and doctests
+describe the final error and parsing contracts.
+
+Implementation commit: `fix round 1 qa findings`, immediately after the reviewed head above.
+
+| Findings | Severity | Change and contract coverage |
+| --- | --- | --- |
+| A-001, C-01 | medium | Dispatch uses the actual runtime type and base-type conversions. Numeric and string subclasses cannot execute attribute hooks; wrong-type rejection never consults instance attributes. `test_contract_types` covers both hook forms, all numeric bases, both formatters and every argument boundary. |
+| A-002, B4 | low | Boundary trimming excludes the configured group separator. Space, tab, carriage return and line feed separators at either edge now raise `ValueError`; valid interior grouping and other ASCII padding still work. `test_contract_padding` covers 48 malformed boundaries and four valid controls. GUIDE and `parse_indian` document the rule. |
+| B1 | medium | Simple and compound aliases apply repeatedly in CLDR precedence order before wildcard variant deletion. `hye-arevmda` raises `LookupError`; `aar-saaho` selects `ssy`. `test_contract_canonicalization` checks all locale-consuming APIs and all 1,773 fetched official pairs. POSIX modifiers retain their previous precedence. |
+| B2 | low | The derived table includes CLDR variant aliases, applied before lookup. `el-polytoni` selects `el-polyton`, including with an explicit default script. |
+| B3 | low | Lookup searches available variant subsets, longest first then alphabetically, before the base locale, including after default-script removal. Tests cover Belarusian, Catalan and Greek bundles and 1,000 irrelevant variants without enumerating subsets. |
+| C-02 | medium | API errors and CLI stderr expose reasons and text lengths only. Raw previews are removed from parsing, locale, grouping and CLI argument errors. `test_contract_privacy` tests synthetic secret-bearing input through API and subprocess paths. |
+| C-03 | medium | Wrong-type errors use fixed descriptions. `test_contract_types` checks 100,000-character class names, newline/escape injection and hostile metaclass metadata at every rejection boundary. |
+
+Before the production changes, the new handwritten contracts produced **154 failures**,
+four passing controls and one skipped optional source test. The official corpus was then
+fetched and tested separately against the original implementation: **36 of 1,773 pairs
+mismatched**. The corrected implementation passes all 164 cases in the four new contract
+modules, with zero canonicalization mismatches. The source URL, revision, retrieval date,
+size and SHA-256 are recorded in `tests/upstream/MANIFEST.json`; the corpus stays untracked
+and is excluded from distributions. The shipped table is verified against fresh CLDR data.
+
+Validation on CPython 3.14.6:
+
+- `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+  `mypy --strict src tests` each exit 0; all source files remain at most 200 lines.
+- The main-checkout `pytest` gate exits 0: **809 passed, ten skipped** in 31.99 seconds.
+  Its optional source and package checks all run in the expanded suite below.
+- The expanded suite with fetched sources, Node, a POSIX shell, `INDGROUP_E2E=1` and
+  `INDGROUP_E2E_PYPI=1` exits 0: **817 passed, two skipped** in 81.98 seconds. The two
+  skips are repository text checks requiring `.git`; all eight documentation tests,
+  including those checks, pass in the main checkout. Wheel installation, CLI consumers,
+  actual PyPI 0.2.0 upgrade, all 766 locale profiles, live Intl comparisons, seeded fuzz,
+  hostile inputs and closed-stream tests pass.
+- Every pytest run uses pytest-timeout at 300 seconds and a scratch basetemp. Closed-pipe
+  tests use a regular scratch sink in place of the platform null device. Builds, downloads,
+  temporary environments and test artifacts remain outside the repository.
 
 ### Round 1 (2026-10-26, at 593f945)
 

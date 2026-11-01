@@ -104,6 +104,12 @@ sign, and for Persian a left-to-right mark before it.
   other than its likely one falls back to the root, as CLDR's `nonlikelyScript` rule says
   (`ru-Latn` and `hi-Arab` read `und`, not `ru` and `hi`). Unicode extensions such as
   `-u-nu-arab` and private use (`-x-...`) do not change anything.
+- Simple language aliases and compound aliases apply together in CLDR precedence order:
+  `aar-saaho` reads `ssy`, while `hye-arevmda` names Western Armenian and raises
+  `LookupError` because it has no number data. Variant aliases apply before lookup:
+  `el-polytoni` reads `el-polyton`. Supported variant subsets are tried before the base
+  locale, longest first then alphabetically: `be-fonipa-tarask` reads `be-tarask` and
+  `ca-Latn-ES-fonipa-valencia` reads `ca-ES-valencia`.
 - `und` and `root` are the root locale. An unknown language raises `LookupError` rather than
   reading another language's data. Text that is not a tag raises `ValueError`: an empty
   subtag, a subtag longer than eight characters or with characters other than ASCII letters
@@ -159,8 +165,8 @@ Values are `int`, `float` or `Decimal` (`bool` is refused). Nothing is rounded.
 
 `parse_number(text, locale)` and `parse_indian(text)` accept exactly:
 
-1. optional spaces, tabs, carriage returns and line feeds (never a group symbol, even a
-   no-break space);
+1. optional ASCII spaces, tabs, carriage returns and line feeds, excluding the configured
+   group separator; Unicode spaces, including no-break spaces, are never padding;
 2. an optional minus, the locale's own (`parse_indian` also takes `+`);
 3. ASCII digits, either ungrouped (leading zeros allowed, as in `007`) or grouped exactly
    where the formatter puts separators, whatever the minimum grouping digits (so `1.234`
@@ -168,6 +174,12 @@ Values are `int`, `float` or `Decimal` (`bool` is refused). Nothing is rounded.
    (`0,001` is refused rather than read as `1`);
 4. optionally the decimal symbol followed by at least one digit;
 5. optional trailing spaces as in step 1.
+
+With `separator=" "`, `parse_indian("1 000", separator=" ")` returns `1000`, while
+`parse_indian(" 1 000 ", separator=" ")` raises `ValueError`: a space is a group
+separator at either boundary too. Other ASCII padding still works, so
+`parse_indian("\t1 000\n", separator=" ")` returns `1000`. The same rule applies when
+the separator is a tab, carriage return or line feed.
 
 A value with no decimal symbol returns an `int`; one with it a `Decimal` keeping every
 digit written. So text written by `format_number` or `format_indian` reads back to a value
@@ -202,11 +214,11 @@ for text, locale in [
 # 1234
 # Decimal('-1234.50')
 # 0
-# not a validly grouped integer: '1,234,567'
-# not a validly grouped integer: '1 234'
-# not a valid fractional part: ''
-# not a validly grouped integer: '-5'
-# not a validly grouped integer: '0,001'
+# not a validly grouped integer: (9 characters)
+# not a validly grouped integer: (5 characters)
+# not a valid fractional part: (0 characters)
+# not a validly grouped integer: (2 characters)
+# not a validly grouped integer: (5 characters)
 ```
 
 ## Types
@@ -226,8 +238,9 @@ members of each.
 | `ValueError` | NaN, infinities, more than 100,000 digits on a side, a bad separator, an unknown grouping, malformed text, a malformed locale tag (an extended language subtag CLDR does not replace included) |
 | `LookupError` | a locale tag whose language has no CLDR number data |
 
-Messages quote at most 40 characters of the input. A longer input is cut to its first 40
-characters, followed by `...` and its length, such as `(100000 characters)`.
+Messages give a reason and, for rejected text, its length, such as `(100000 characters)`.
+They never include the input text or a user-defined class name. Wrong-type messages name
+only the expected type, so hostile class names cannot create long or multiline errors.
 
 ## Command line
 
@@ -251,8 +264,8 @@ arguments, so whichever comes first is shown and anything after it is ignored.
 
 An argument that starts with a minus followed by a digit or a point (`-1e5`, `-1.234,5`)
 is a value, the same on every Python version; put `--` before any other value that starts
-with a minus. Errors, argument errors included, print one line on stderr, quoting at most
-40 characters of an argument, and exit with status 2. On a pipe, stdin, stdout and stderr
+with a minus. Errors, argument errors included, print one line on stderr with a reason and
+length metadata, without echoing arguments, and exit with status 2. On a pipe, stdin, stdout and stderr
 are UTF-8 whatever the system encoding (the legacy code page on Windows), so a program that
 reads the output of `indgroup` as UTF-8 can read its errors the same way. When the reader
 of stdout closes it early, as `indgroup < values.txt | head -1` does, the command stops

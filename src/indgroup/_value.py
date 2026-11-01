@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 from ._bigint import to_decimal
 
@@ -17,16 +17,10 @@ DIGITS = re.compile(r"[0-9]+")
 MAX_DIGITS = 100_000
 _INT_LIMIT = 10**MAX_DIGITS
 
-# Error messages quote at most this many characters of the text they reject.
-_SHOWN = 40
 
-
-def shown(text: str) -> str:
-    """``repr`` of ``text``, cut to its first characters so a huge input stays out of messages."""
-    text = str.__str__(text)
-    if len(text) <= _SHOWN:
-        return repr(text)
-    return f"{text[:_SHOWN]!r}... ({len(text)} characters)"
+def input_size(text: str) -> str:
+    """Length metadata only: rejected text may contain private data."""
+    return f"({str.__len__(text)} characters)"
 
 
 def too_long(part: str) -> ValueError:
@@ -41,23 +35,25 @@ def split_value(value: object) -> tuple[bool, str, str]:
     Decimal keeps its exponent: trailing zeros and negative zero survive. Methods of
     subclasses are never called, so they cannot change the digits.
     """
-    if isinstance(value, bool):
+    kind = type(value)
+    if kind is bool:
         raise TypeError("value must be an int, float or Decimal, not bool")
     from_float = False
-    if isinstance(value, int):
-        if int.__abs__(value) >= _INT_LIMIT:
+    if issubclass(kind, int):
+        integer_value = cast(int, value)
+        if int.__abs__(integer_value) >= _INT_LIMIT:
             raise too_long("integer part")
-        number = to_decimal(int.__int__(value))  # past the 4300-digit limit of str
-    elif isinstance(value, float):
-        number = Decimal(float.__repr__(value))
+        number = to_decimal(int.__int__(integer_value))  # past the 4300-digit limit of str
+    elif issubclass(kind, float):
+        number = Decimal(float.__repr__(cast(float, value)))
         from_float = True
-    elif isinstance(value, Decimal):
-        number = value
+    elif issubclass(kind, Decimal):
+        number = cast(Decimal, value)
     else:
-        raise TypeError(f"value must be an int, float or Decimal, not {type(value).__name__}")
+        raise TypeError("value must be an int, float or Decimal")
     if not Decimal.is_finite(number):
-        kind = "NaN" if Decimal.is_nan(number) else "an infinity"
-        raise ValueError(f"value must be a finite number, not {kind}")
+        special = "NaN" if Decimal.is_nan(number) else "an infinity"
+        raise ValueError(f"value must be a finite number, not {special}")
     if not Decimal.is_zero(number) and Decimal.adjusted(number) >= MAX_DIGITS:
         raise too_long("integer part")
     exponent = Decimal.as_tuple(number).exponent

@@ -7,9 +7,9 @@ from decimal import Decimal
 from functools import lru_cache
 
 from ._bigint import to_int
-from ._value import DIGITS, MAX_DIGITS, shown, too_long
+from ._value import DIGITS, MAX_DIGITS, input_size, too_long
 
-SPACE = " \t\r\n"  # trimmed around values; never a group symbol such as U+00A0
+SPACE = " \t\r\n"  # padding candidates; the active group symbol is always preserved
 
 
 def group_digits(digits: str, separator: str, primary: int, secondary: int, minimum: int) -> str:
@@ -48,7 +48,7 @@ def read_digits(part: str, separator: str, primary: int, secondary: int) -> str:
     elif primary > 0 and _grouped(separator, primary, secondary).fullmatch(part):
         digits = part.replace(separator, "")
     else:
-        raise ValueError(f"not a validly grouped integer: {shown(part)}")
+        raise ValueError(f"not a validly grouped integer: {input_size(part)}")
     if len(digits) > MAX_DIGITS:
         raise too_long("integer part")
     return digits
@@ -62,9 +62,9 @@ def read_number(
     A value without a fraction is an ``int``, one with a fraction a ``Decimal`` that keeps
     every digit written.
     """
-    if not isinstance(text, str):
-        raise TypeError(f"text must be a str, not {type(text).__name__}")
-    raw = str.__str__(text).strip(SPACE)  # not str.strip(): U+00A0 and U+202F are group symbols
+    if not issubclass(type(text), str):
+        raise TypeError("text must be a str")
+    raw = str.__str__(text).strip(SPACE.replace(separator, ""))
     negative = raw.startswith(minus)
     if negative:
         raw = raw[len(minus) :]
@@ -73,7 +73,7 @@ def read_number(
     integer, point, fraction = raw.partition(decimal)
     digits = read_digits(integer, separator, *sizes)
     if point and not DIGITS.fullmatch(fraction):
-        raise ValueError(f"not a valid fractional part: {shown(fraction)}")
+        raise ValueError(f"not a valid fractional part: {input_size(fraction)}")
     if len(fraction) > MAX_DIGITS:
         raise too_long("fraction")
     if not point:

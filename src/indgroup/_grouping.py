@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import cast
 
 from ._digits import group_digits, read_number
 from ._value import Number, split_value
@@ -11,9 +12,9 @@ _SIZES = (3, 2)
 
 
 def _check_separator(separator: object) -> str:
-    if not isinstance(separator, str):
-        raise TypeError(f"separator must be a str, not {type(separator).__name__}")
-    separator = str.__str__(separator)
+    if not issubclass(type(separator), str):
+        raise TypeError("separator must be a str")
+    separator = str.__str__(cast(str, separator))
     if len(separator) != 1 or separator.isdigit() or separator in ".+-":
         raise ValueError("separator must be one character other than a digit, a sign or '.'")
     return separator
@@ -52,8 +53,8 @@ def parse_indian(text: str, *, separator: str = ",") -> int | Decimal:
     A value with no fractional part returns an ``int``; otherwise a ``Decimal`` keeping
     every digit written. An optional ``-`` or ``+`` leads; ASCII digits follow, ungrouped or
     grouped exactly as :func:`format_indian` writes them; spaces, tabs and line breaks around
-    the text are ignored. Western grouping and any other malformed input raise
-    ``ValueError``, a non-``str`` ``TypeError``.
+    the text are ignored unless they are the chosen separator. Western grouping and malformed
+    input raise ``ValueError``, a non-``str`` ``TypeError``.
 
     >>> parse_indian("12,34,567")
     1234567
@@ -62,7 +63,7 @@ def parse_indian(text: str, *, separator: str = ",") -> int | Decimal:
     >>> parse_indian("1,234,567")
     Traceback (most recent call last):
     ...
-    ValueError: not a validly grouped integer: '1,234,567'
+    ValueError: not a validly grouped integer: (9 characters)
     """
     sep = _check_separator(separator)
     return read_number(text, ".", sep, _SIZES, "-", "+")

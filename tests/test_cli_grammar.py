@@ -40,7 +40,7 @@ def test_values_after_a_double_dash_keep_their_order(
     capsys: pytest.CaptureFixture[str], argv: list[str], expected: str | None
 ) -> None:
     if expected is None:  # a second "--" is a value, and not a number
-        assert "not a plain number: '--'" in error_of(capsys, *argv)
+        assert "not a plain number: (2 characters)" in error_of(capsys, *argv)
     else:
         assert run(*argv) == (0, expected)
 
@@ -69,11 +69,11 @@ def test_a_short_option_takes_its_value_after_an_equals_sign() -> None:
 @pytest.mark.parametrize(
     ("argv", "message"),
     [
-        (["--parse=l", "de", "1.234"], "--parse takes no value: '--parse=l'"),
+        (["--parse=l", "de", "1.234"], "--parse takes no value: (9 characters)"),
         (["--locales=", "1"], "--locales takes no value"),
-        (["-p=x", "1"], "--parse takes no value: '-p=x'"),
-        (["-px", "1"], "unknown option '-x' in '-px'"),
-        (["-xp", "1"], "unknown option '-xp'"),
+        (["-p=x", "1"], "--parse takes no value: (4 characters)"),
+        (["-px", "1"], "unknown option (2 characters) in (3 characters)"),
+        (["-xp", "1"], "unknown option (3 characters)"),
     ],
 )
 def test_flags_take_no_value(
@@ -90,7 +90,7 @@ def test_locales_wins_over_other_flags_in_any_order() -> None:
 def test_a_lone_dash_is_a_value(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("--locales", "-") == (0, LOCALES)
     assert run("-", "--version") == (0, f"indgroup {__version__} (CLDR 48.2.0)\n")
-    assert "not a plain number: '-'" in error_of(capsys, "-")
+    assert "not a plain number: (1 characters)" in error_of(capsys, "-")
 
 
 def test_a_short_option_cluster_is_read_in_order() -> None:
@@ -112,16 +112,16 @@ GROUPING = "--grouping must be one of auto, min2, always, off, not "
 @pytest.mark.parametrize(
     ("argv", "message"),
     [
-        (["-l==de", "1234567"], "not a locale tag: '=de'"),
-        (["-g==off", "1234567"], GROUPING + "'=off'"),
-        (["-l=", "de", "1234567"], "not a plain number: 'de'"),
-        (["--locale=", "de", "1234567"], "not a plain number: 'de'"),
-        (["--locale=", "1234567"], "not a locale tag: ''"),
-        (["-g=", "off", "1234567"], GROUPING + "''"),
-        (["--grouping=", "off", "1234567"], GROUPING + "''"),
-        (["--grouping", " off", "1234567"], GROUPING + "' off'"),
-        (["-g", " off", "1234567"], GROUPING + "' off'"),
-        (["--locale", " de", "1234567"], "not a locale tag: ' de'"),
+        (["-l==de", "1234567"], "not a locale tag: (3 characters)"),
+        (["-g==off", "1234567"], GROUPING + "(4 characters)"),
+        (["-l=", "de", "1234567"], "not a plain number: (2 characters)"),
+        (["--locale=", "de", "1234567"], "not a plain number: (2 characters)"),
+        (["--locale=", "1234567"], "not a locale tag: (0 characters)"),
+        (["-g=", "off", "1234567"], GROUPING + "(0 characters)"),
+        (["--grouping=", "off", "1234567"], GROUPING + "(0 characters)"),
+        (["--grouping", " off", "1234567"], GROUPING + "(4 characters)"),
+        (["-g", " off", "1234567"], GROUPING + "(4 characters)"),
+        (["--locale", " de", "1234567"], "not a locale tag: (3 characters)"),
     ],
 )
 def test_an_option_value_is_taken_as_written(

@@ -59,6 +59,7 @@ exclude = [
     "tests/upstream/*.cpp",
     "tests/upstream/*.html",
     "tests/upstream/intl-node.json",
+    "tests/upstream/localeCanonicalization.txt",
 ]
 
 [tool.ruff]

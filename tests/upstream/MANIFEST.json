@@ -46,5 +46,14 @@
     "licence": "Unicode-3.0 (ICU locale data)",
     "size": 3260802,
     "sha256": "3bdad111b1e70cba476c92e96412b9177f957b75df8daef9cba874478ef54b62"
+  },
+  "localeCanonicalization.txt": {
+    "title": "Unicode CLDR 48 locale canonicalization test vectors",
+    "url": "https://raw.githubusercontent.com/unicode-org/cldr/release-48/common/testData/localeIdentifiers/localeCanonicalization.txt",
+    "revision": "release-48",
+    "fetched": "2026-11-01",
+    "licence": "Unicode-3.0",
+    "size": 49041,
+    "sha256": "b34b34d9a496c99e00ee4736ea32701249fe6d6516a3b1dc43bf0d008ef47f64"
   }
 }

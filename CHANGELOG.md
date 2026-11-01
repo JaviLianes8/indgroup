@@ -48,12 +48,24 @@ needs a new major version.
   digits read by the parsers, so `Decimal("1E-999999999")` built a gigabyte of text.
 - A `grouping` that is not a `str` raises `TypeError` instead of `ValueError`, like every
   other argument of the wrong type.
-- Error messages quote at most 40 characters of the input; a longer input is cut and its
-  length given. Before, they quoted it whole, so a megabyte of text gave a megabyte of
-  message.
+- API errors and CLI stderr give reasons and input lengths without quoting any input text.
+  Wrong-type errors use fixed descriptions instead of class names. Secret-bearing input
+  and hostile class names can no longer leak into messages or inject extra log lines.
 - `NumberSymbols` reports `indgroup` as its module, so pickles name the public path.
-- Subclasses of `str` passed as text, locale, separator or grouping are read by their value,
-  as subclasses of the numeric types already were.
+- Subclasses of `int`, `float`, `Decimal` and `str` are read by value without invoking
+  attribute hooks, including overridden `__getattribute__` and `__class__`. Wrong-type
+  arguments are rejected without consulting instance attributes or metaclass metadata.
+- Simple and compound language aliases now apply together in CLDR precedence order before
+  wildcard variant deletion: `aar-saaho` reads `ssy`; `hye-arevmda` raises `LookupError`
+  for unsupported Western Armenian instead of reading Armenian data. Intermediate language
+  aliases are retained even when they have no number bundle.
+- Deprecated variant aliases select their canonical bundle (`el-polytoni` reads
+  `el-polyton`). Lookup tries supported variant subsets, longest first then alphabetically,
+  before the base locale, including after removing a default script: `be-fonipa-tarask`
+  reads `be-tarask` and `ca-Latn-ES-fonipa-valencia` reads `ca-ES-valencia`.
+- `parse_indian` preserves the configured separator during boundary trimming, including
+  ASCII space, tab, carriage return and line feed. Stray boundary separators now raise
+  `ValueError`; other ASCII padding and valid interior grouping remain accepted.
 - `parse_number` and `parse_indian` refuse a grouped integer whose first group starts with
   `0`, such as `0,001`, `01,234` or `00,01,234`: the formatters never write one, and `0,001`
   is more likely a misread decimal comma than the number 1. Ungrouped leading zeros (`007`)
@@ -79,7 +91,7 @@ needs a new major version.
   Python version. An argument that starts with a minus followed by a digit or a point, such
   as `-1e5` or `-1.234,5`, is a value; before, Python 3.10 to 3.13 took it for an unknown
   option unless `--` came first, and 3.14 did not. Every error, argument errors included,
-  prints one line on stderr (no usage block) quoting at most 40 characters of an argument,
+  prints one line on stderr (no usage block) with reasons and bounded length metadata,
   and still exits with status 2. `--help` and `--version` print to the stream given to
   `main` and return 0. Short options may be clustered (`-pl de`, `-plde`, `-l=de`), in time
   linear in the length of the argument, and a flag given a value (`-p=x`, `--parse=x`) is an

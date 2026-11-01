@@ -141,8 +141,8 @@ On a pipe, stdin, stdout and stderr are UTF-8 on every system.
 
 Wrong types raise `TypeError`; NaN, infinities, unknown grouping values, malformed text and
 values past the digit bound raise `ValueError`; an unknown language raises `LookupError`
-instead of silently reading English. Error messages quote at most 40 characters of the
-input; a longer input is cut and its length given. The [GUIDE](https://github.com/JaviLianes8/indgroup/blob/main/GUIDE.md) covers every
+instead of silently reading English. Error messages give reasons and input lengths without
+echoing input text or user-defined class names. The [GUIDE](https://github.com/JaviLianes8/indgroup/blob/main/GUIDE.md) covers every
 rule in detail and the
 [CHANGELOG](https://github.com/JaviLianes8/indgroup/blob/main/CHANGELOG.md) what changed in
 each release.

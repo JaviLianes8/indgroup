@@ -7,7 +7,7 @@ from typing import Literal, cast, get_args
 
 from ._digits import group_digits, read_number
 from ._symbols import number_symbols
-from ._value import Number, shown, split_value
+from ._value import Number, input_size, split_value
 
 # The useGrouping values of Intl.NumberFormat, documented in the package docstring.
 Grouping = Literal["auto", "min2", "always", "off"]
@@ -37,12 +37,12 @@ def format_number(value: Number, locale: str, *, grouping: Grouping = "auto") ->
     >>> format_number(-1234567, "fr").split(chr(0x202F))  # narrow no-break spaces
     ['-1', '234', '567']
     """
-    if not isinstance(grouping, str):
-        raise TypeError(f"grouping must be a str, not {type(grouping).__name__}")
+    if not issubclass(type(grouping), str):
+        raise TypeError("grouping must be a str")
     grouping = cast(Grouping, str.__str__(grouping))  # a str subclass cannot fake a match
     if grouping not in _GROUPINGS:
         choices = ", ".join(_GROUPINGS)
-        raise ValueError(f"grouping must be one of {choices}, not {shown(grouping)}")
+        raise ValueError(f"grouping must be one of {choices}, not {input_size(grouping)}")
     symbols = number_symbols(locale)
     negative, integer, fraction = split_value(value)
     primary, secondary, minimum = symbols.primary, symbols.secondary, symbols.min_grouping
@@ -77,7 +77,7 @@ def parse_number(text: str, locale: str) -> int | Decimal:
     >>> parse_number("1,234,567", "en-IN")
     Traceback (most recent call last):
     ...
-    ValueError: not a validly grouped integer: '1,234,567'
+    ValueError: not a validly grouped integer: (9 characters)
     """
     symbols = number_symbols(locale)
     sizes = (symbols.primary, symbols.secondary)

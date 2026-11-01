@@ -33,7 +33,7 @@ def _message(call: Callable[[], object], kind: type[Exception] = ValueError) -> 
     return text
 
 
-def test_error_messages_quote_at_most_forty_characters_of_the_input() -> None:
+def test_error_messages_report_only_bounded_metadata() -> None:
     assert "1000001 characters" in _message(lambda: parse_number(HUGE, "en"))
     assert "1000001 characters" in _message(lambda: parse_indian(HUGE))
     _message(lambda: parse_number("1." + HUGE, "en"))
@@ -46,7 +46,9 @@ def test_error_messages_quote_at_most_forty_characters_of_the_input() -> None:
     _message(lambda: format_number(Decimal("sNaN"), "en"))
     _message(lambda: format_number(Decimal(f"1E+{10**9}"), "en"))
     _message(lambda: number_symbols("x" * 1_000_000))
-    assert _message(lambda: parse_number("1,23", "en")) == ("not a validly grouped integer: '1,23'")
+    assert _message(lambda: parse_number("1,23", "en")) == (
+        "not a validly grouped integer: (4 characters)"
+    )
 
 
 def test_the_cli_reports_huge_values_in_one_short_line(capsys: pytest.CaptureFixture[str]) -> None:

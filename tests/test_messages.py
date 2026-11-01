@@ -1,5 +1,4 @@
-"""The exact text of error messages: where the quoting of the input is cut, and what NaN and
-the infinities are called."""
+"""Input length metadata and the fixed descriptions of nonfinite values."""
 
 from __future__ import annotations
 
@@ -25,28 +24,20 @@ CALLS: list[tuple[Callable[[str], object], str]] = [
 
 
 @pytest.mark.parametrize(("call", "prefix"), CALLS)
-def test_an_input_of_forty_characters_is_quoted_whole(
-    call: Callable[[str], object], prefix: str
+@pytest.mark.parametrize("length", [9, 40, 41, 100_000])
+def test_errors_report_the_length_without_quoting_any_input(
+    call: Callable[[str], object], prefix: str, length: int
 ) -> None:
-    text = "x" * 40
+    text = "x" * length
     with pytest.raises(ValueError) as raised:
         call(text)
-    assert str(raised.value) == f"{prefix}{text!r}"
+    assert str(raised.value) == f"{prefix}({length} characters)"
 
 
-@pytest.mark.parametrize(("call", "prefix"), CALLS)
-def test_an_input_of_forty_one_characters_is_cut_and_counted(
-    call: Callable[[str], object], prefix: str
-) -> None:
-    with pytest.raises(ValueError) as raised:
-        call("x" * 41)
-    assert str(raised.value) == f"{prefix}{'x' * 40!r}... (41 characters)"
-
-
-def test_the_cut_counts_characters_not_bytes() -> None:
+def test_the_length_counts_characters_not_bytes() -> None:
     with pytest.raises(ValueError) as raised:
         parse_indian(chr(0x20AC) * 41)
-    assert str(raised.value).endswith("... (41 characters)")
+    assert str(raised.value) == "not a validly grouped integer: (41 characters)"
 
 
 def _message(call: Callable[..., object], *args: object) -> str:
@@ -69,7 +60,7 @@ def test_an_infinity_is_named_in_the_message(value: float | Decimal) -> None:
         assert message == "value must be a finite number, not an infinity"
 
 
-def test_number_symbols_quotes_the_tag_the_same_way() -> None:
+def test_number_symbols_reports_only_the_tag_length() -> None:
     with pytest.raises(ValueError) as raised:
         number_symbols("a" * 40)
-    assert str(raised.value) == f"not a locale tag: {'a' * 40!r}"
+    assert str(raised.value) == "not a locale tag: (40 characters)"

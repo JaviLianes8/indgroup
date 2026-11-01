@@ -15,7 +15,7 @@ from ._bigint import to_decimal
 from ._digits import SPACE
 from ._locale import cldr_version, supported_locales
 from ._number import Grouping, format_number, parse_number
-from ._value import MAX_DIGITS, shown
+from ._value import MAX_DIGITS, input_size
 
 __all__ = ["main"]
 
@@ -54,7 +54,7 @@ def _convert(value: str, args: Args) -> str:
         return format(number, "f")
     match = _PLAIN.fullmatch(value.strip(SPACE))
     if match is None:
-        raise ValueError(f"not a plain number: {shown(value)}")
+        raise ValueError(f"not a plain number: {input_size(value)}")
     mantissa, sign, exponent = match.group(1, 2, 3)
     exponent = (exponent or "0").lstrip("0") or "0"
     # Past this bound the value is zero or past the digit bound whatever the exponent, so the
